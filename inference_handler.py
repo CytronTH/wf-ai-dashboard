@@ -6,8 +6,17 @@ import threading
 import yaml
 
 # Import Hailo Optimized Class
-sys.path.append("/home/pi/wf/ai_receiver_deploy")
-from inference_hailo_rpi_optimized import HailoPatchCoreOptimized
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+ai_receiver_deploy_path = os.path.join(parent_dir, "ai_receiver_deploy")
+sys.path.append(ai_receiver_deploy_path)
+
+try:
+    from inference_hailo_rpi_optimized import HailoPatchCoreOptimized
+except ModuleNotFoundError:
+    print(f"[Error] Could not find inference_hailo_rpi_optimized.py in {ai_receiver_deploy_path}")
+    print("Please ensure the 'ai_receiver_deploy' folder is located next to 'ai_dashboard'.")
+    sys.exit(1)
 
 class InferenceHandler:
     def __init__(self, config_path):

@@ -164,7 +164,7 @@ async def lifespan(app: FastAPI):
     global handler, config
     
     # Load Configuration
-    config_path = "/home/pi/wf/ai_dashboard/config.yaml"
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         
@@ -188,7 +188,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Mount static files (Dashboard HTML/JS/CSS)
-static_dir = "/home/pi/wf/ai_dashboard/static"
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
