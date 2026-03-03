@@ -7,15 +7,25 @@ import yaml
 
 # Import Hailo Optimized Class
 current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-ai_receiver_deploy_path = os.path.join(parent_dir, "ai_receiver_deploy")
+ai_receiver_deploy_path_internal = os.path.join(current_dir, "ai_receiver_deploy")
+ai_receiver_deploy_path_external = os.path.join(os.path.dirname(current_dir), "ai_receiver_deploy")
+
+if os.path.exists(ai_receiver_deploy_path_internal):
+    ai_receiver_deploy_path = ai_receiver_deploy_path_internal
+elif os.path.exists(ai_receiver_deploy_path_external):
+    ai_receiver_deploy_path = ai_receiver_deploy_path_external
+else:
+    print(f"[Error] Could not find 'ai_receiver_deploy' folder.")
+    print(f"Looked in: {ai_receiver_deploy_path_internal} and {ai_receiver_deploy_path_external}")
+    sys.exit(1)
+
 sys.path.append(ai_receiver_deploy_path)
 
 try:
     from inference_hailo_rpi_optimized import HailoPatchCoreOptimized
 except ModuleNotFoundError:
     print(f"[Error] Could not find inference_hailo_rpi_optimized.py in {ai_receiver_deploy_path}")
-    print("Please ensure the 'ai_receiver_deploy' folder is located next to 'ai_dashboard'.")
+    print("Please ensure the 'ai_receiver_deploy' folder is located next to 'ai_dashboard' or inside it.")
     sys.exit(1)
 
 class InferenceHandler:
