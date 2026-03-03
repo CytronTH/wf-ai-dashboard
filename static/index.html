@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Inference Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        ok: '#10b981',
+                        ng: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            /* Prevent scrolling globally */
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .slot {
+            transition: all 0.3s ease;
+        }
+
+        .slot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        .status-ok {
+            border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-ng {
+            border-color: #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen p-4 flex flex-col gap-4 bg-dark text-slate-100 overflow-hidden">
+
+    <!-- Header & Telemetry -->
+    <header class="glass rounded-xl p-3 flex justify-between items-center shadow-lg flex-none h-[8%]">
+        <div>
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
+                Wingfung AOI system</h1>
+            <p class="text-gray-400 mt-0 text-[10px] font-medium uppercase tracking-wider">Multi-part Anomaly Detection
+            </p>
+        </div>
+
+        <div class="flex gap-4">
+            <div class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[100px]">
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Status</div>
+                <div id="connection-status"
+                    class="text-yellow-400 font-bold text-sm flex items-center justify-center gap-1.5">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                    Connecting
+                </div>
+            </div>
+            <div class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[80px]">
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Global FPS</div>
+                <div id="fps-counter" class="text-white font-mono font-bold text-sm">0</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content (Middle Row) -->
+    <main class="flex-1 flex gap-4 min-h-0">
+
+        <!-- Left Col: Pre-Crop -->
+        <div class="flex-[1.8] flex flex-col min-w-0 h-full">
+            <div id="slot-pre_crop"
+                class="glass rounded-2xl p-2 flex-1 flex flex-col slot border-4 border-gray-600 relative overflow-hidden transition-colors duration-300">
+                <div
+                    class="absolute top-3 left-3 z-10 bg-black/70 px-4 py-1.5 rounded-lg text-xl font-black text-white tracking-widest uppercase shadow-md flex items-center gap-2">
+                    PRE_CROP
+                    <div class="status-badge text-[10px] px-2 py-0.5 rounded bg-gray-600 text-white">WAIT</div>
+                </div>
+
+                <div class="absolute top-3 right-3 z-10 flex gap-2">
+                    <!-- Removed Score display from Pre_Crop -->
+                </div>
+
+                <div
+                    class="flex-1 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-xl overflow-hidden mt-12">
+                    <img class="img-display h-full w-full object-contain absolute opacity-0 transition-opacity duration-300"
+                        src="" alt="Pre_Crop" />
+                    <span class="placeholder-text text-gray-500 font-medium">Waiting for inference data...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Col: Control Panel & Crops -->
+        <div class="flex-1 flex flex-col gap-3 min-w-0 min-h-0 h-full">
+
+            <!-- Global Status Box -->
+            <div id="global-status"
+                class="flex-none h-[15%] glass rounded-2xl flex items-center justify-center border-4 border-gray-600 bg-gray-800/50 shadow-xl transition-colors duration-300 relative">
+                <div class="absolute top-1 left-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Global
+                    Status</div>
+                <span id="global-status-text"
+                    class="text-5xl font-black text-gray-400 tracking-widest uppercase drop-shadow-md">WAIT</span>
+            </div>
+
+            <!-- Masked Surface -->
+            <div id="slot-masked_surface"
+                class="flex-none h-[25%] glass rounded-xl p-1.5 flex flex-col slot border-2 border-gray-700 relative transition-colors duration-300">
+                <div
+                    class="absolute top-1 left-1.5 z-10 bg-black/70 px-2 py-0.5 rounded-md text-[10px] font-bold text-white shadow-md">
+                    MASKED_SURFACE
+                </div>
+                <!-- Stats floating right -->
+                <div class="absolute top-1 right-1.5 z-10 flex gap-1">
+                    <span
+                        class="score-val text-[10px] font-mono bg-black/70 px-1 py-0.5 rounded text-white shadow-md">0.000</span>
+                    <span
+                        class="status-badge text-[10px] font-bold bg-gray-600 px-1 py-0.5 rounded text-white shadow-md">WAIT</span>
+                </div>
+                <div
+                    class="flex-1 mt-6 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-lg overflow-hidden">
+                    <img class="img-display h-full w-full object-contain absolute opacity-0 transition-opacity duration-300"
+                        src="" alt="Masked Surface" />
+                    <span class="placeholder-text text-gray-600 text-[10px]">No Data</span>
+                </div>
+            </div>
+
+            <!-- Crops Grid -->
+            <div class="flex-[1] grid grid-cols-2 gap-2 min-h-0 h-full">
+                <!-- Generate 6 crops (1 to 6) -->
+                <script>
+                    for (let i = 1; i <= 6; i++) {
+                        document.write(`
+                            <div id="slot-crop_${i}" class="glass rounded-xl p-1.5 flex flex-col slot border-2 border-gray-700 relative overflow-hidden transition-colors duration-300">
+                                <div class="absolute top-1 left-1 z-10 bg-black/70 px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-md">
+                                    CROP_${i}
+                                </div>
+                                <div class="absolute top-1 right-1 z-10 flex gap-1 items-center">
+                                    <span class="status-badge text-[8px] font-bold px-1 rounded bg-gray-600 text-white">WAIT</span>
+                                </div>
+                                
+                                <div class="flex-1 mt-5 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-md overflow-hidden">
+                                    <img class="img-display h-full w-full object-cover absolute opacity-0 transition-opacity duration-300" src="" alt="Crop ${i}" />
+                                    <span class="placeholder-text text-gray-700 text-[8px]">Wait</span>
+                                </div>
+                                
+                                <div class="absolute bottom-1 left-1 right-1 flex justify-center z-10">
+                                    <div class="bg-black/70 px-1.5 py-0.5 rounded shadow-md pointer-events-none">
+                                        <span class="score-val text-[10px] font-mono font-bold text-white">0.000</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                </script>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Row: Inference History -->
+    <div class="flex-none h-[14%] w-full flex items-center relative min-h-0 overflow-hidden">
+        <div
+            class="absolute left-0 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-gray-400 tracking-wider z-20 whitespace-nowrap bg-dark/80 px-2 py-4 rounded-r-lg">
+            History
+        </div>
+        <div id="history-container"
+            class="flex gap-2 h-full w-full items-center justify-start pl-16 overflow-hidden pb-1 relative z-10 min-h-0">
+            <!-- Items injected by JS -->
+            <div class="flex items-center justify-center h-full text-sm text-gray-500 italic w-full" id="history-empty">
+                Waiting for completed cycles...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let frameCount = 0;
+        let lastTime = performance.now();
+
+        let slotStatuses = {};
+        let currentGlobalStatus = 'WAIT';
+        let lastPreCropImageObj = null;
+
+        function connectWS() {
+            const host = window.location.hostname;
+            const port = window.location.port;
+            const wsUrl = `ws://${host}:${port}/ws`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                const statusEl = document.getElementById('connection-status');
+                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-ok animate-pulse"></div> Live';
+                statusEl.className = 'text-ok font-bold text-sm flex items-center justify-center gap-1.5';
+            };
+
+            ws.onclose = () => {
+                const statusEl = document.getElementById('connection-status');
+                statusEl.innerHTML = '<div class="w-2 h-2 rounded-full bg-ng"></div> Offline';
+                statusEl.className = 'text-ng font-bold text-sm flex items-center justify-center gap-1.5';
+                setTimeout(connectWS, 2000);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+
+                frameCount++;
+                const now = performance.now();
+                if (now - lastTime >= 1000) {
+                    const fps = Math.round((frameCount * 1000) / (now - lastTime));
+                    document.getElementById('fps-counter').innerText = fps;
+                    frameCount = 0;
+                    lastTime = now;
+                }
+            };
+        }
+
+        function updateUI(data) {
+            const { image_id, score, threshold, status, image } = data;
+            const slot = document.getElementById(`slot-${image_id}`);
+
+            // A pre_crop signifies the start of a completely new frame
+            if (image_id === 'pre_crop') {
+                if (lastPreCropImageObj && Object.keys(slotStatuses).length > 0) {
+                    addHistory(lastPreCropImageObj);
+                }
+
+                lastPreCropImageObj = { src: image, status: currentGlobalStatus };
+                slotStatuses = {};
+            }
+
+            if (!slot && image_id !== 'pre_crop') return;
+
+            if (image_id !== 'pre_crop') {
+                slotStatuses[image_id] = status;
+            }
+
+            if (slot) {
+                const imgEl = slot.querySelector('.img-display');
+                const placeholder = slot.querySelector('.placeholder-text');
+
+                imgEl.src = image;
+                if (imgEl.classList.contains('opacity-0')) {
+                    imgEl.classList.remove('opacity-0');
+                    if (placeholder) placeholder.style.display = 'none';
+                }
+
+                const scoreEl = slot.querySelector('.score-val');
+                if (scoreEl) scoreEl.innerText = score.toFixed(4);
+
+                const badge = slot.querySelector('.status-badge');
+                if (badge) badge.innerText = status;
+
+                slot.classList.remove('border-gray-700', 'border-gray-600', 'status-ok', 'status-ng', 'border-ok', 'border-ng');
+
+                if (status === 'OK') {
+                    if (badge) badge.className = 'status-badge text-[8px] font-bold px-1.5 py-0.5 rounded bg-ok/20 text-ok border border-ok/50';
+                    slot.classList.add('border-ok', 'shadow-[0_0_10px_rgba(16,185,129,0.15)]');
+                } else if (status === 'NG') {
+                    if (badge) badge.className = 'status-badge text-[8px] font-bold px-1.5 py-0.5 rounded bg-ng text-white shadow-lg shadow-red-500/50';
+                    slot.classList.add('border-ng', 'shadow-[0_0_15px_rgba(239,68,68,0.3)]');
+                } else {
+                    slot.classList.add('border-gray-600');
+                }
+            }
+
+            // Evaluate Global Status based STRICTLY on what the user actually sees on screen
+            let visualIsNG = false;
+            let visualOkCount = 0;
+            const cropSlots = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface'];
+
+            for (const c of cropSlots) {
+                const s = document.getElementById(`slot-${c}`);
+                if (s) {
+                    if (s.classList.contains('border-ng')) visualIsNG = true;
+                    else if (s.classList.contains('border-ok')) visualOkCount++;
+                }
+            }
+
+            if (visualIsNG) {
+                currentGlobalStatus = 'NG';
+                updateGlobalStatusDisplay('NG');
+            } else if (visualOkCount > 0) {
+                currentGlobalStatus = 'OK';
+                updateGlobalStatusDisplay('OK');
+            } else {
+                currentGlobalStatus = 'WAIT';
+                updateGlobalStatusDisplay('WAIT');
+            }
+
+            if (lastPreCropImageObj) {
+                lastPreCropImageObj.status = currentGlobalStatus;
+            }
+        }
+
+        function updateGlobalStatusDisplay(gStatus) {
+            const globalStatusEl = document.getElementById('global-status');
+            const globalTextEl = document.getElementById('global-status-text');
+            const preCropSlot = document.getElementById('slot-pre_crop');
+
+            // Force fully clear ALL layout-affecting state classes that we add across different statuses
+            globalStatusEl.classList.remove('border-gray-600', 'bg-gray-800/50', 'border-ok', 'bg-ok/10', 'border-ng', 'bg-ng/10', 'bg-ng/20', 'border-yellow-400', 'bg-yellow-400/10');
+            preCropSlot.classList.remove('border-gray-600', 'border-ok', 'border-ng', 'shadow-[0_0_30px_rgba(239,68,68,0.3)]', 'shadow-[0_0_30px_rgba(16,185,129,0.3)]');
+
+            globalTextEl.classList.remove('text-gray-400', 'text-ng', 'text-yellow-400', 'text-ok', 'drop-shadow-[0_0_20px_rgba(239,68,68,0.9)]', 'drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]', 'drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]');
+            globalTextEl.classList.add('transition-all', 'duration-300');
+
+            if (gStatus === 'NG') {
+                globalTextEl.innerHTML = `NG`;
+
+                globalTextEl.classList.add('text-ng', 'drop-shadow-[0_0_20px_rgba(239,68,68,0.9)]');
+                globalStatusEl.classList.add('border-ng', 'bg-ng/20');
+
+                preCropSlot.classList.add('border-ng', 'shadow-[0_0_30px_rgba(239,68,68,0.3)]');
+                const preBadge = preCropSlot.querySelector('.status-badge');
+                if (preBadge) {
+                    preBadge.innerText = 'NG';
+                    preBadge.className = 'status-badge text-[10px] px-2 py-0.5 rounded bg-ng text-white shadow-lg';
+                }
+            }
+            else if (gStatus === 'OK') {
+                globalTextEl.innerText = 'OK';
+                globalTextEl.classList.add('text-ok', 'drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]');
+                globalStatusEl.classList.add('border-ok', 'bg-ok/10');
+
+                preCropSlot.classList.add('border-ok', 'shadow-[0_0_30px_rgba(16,185,129,0.3)]');
+                const preBadge = preCropSlot.querySelector('.status-badge');
+                if (preBadge) {
+                    preBadge.innerText = 'OK';
+                    preBadge.className = 'status-badge text-[10px] px-2 py-0.5 rounded bg-ok/20 text-ok border border-ok/50';
+                }
+            }
+            else {
+                globalTextEl.innerText = 'WAITING...';
+                globalTextEl.classList.add('text-gray-400');
+                globalStatusEl.classList.add('border-gray-600', 'bg-gray-800/50');
+                preCropSlot.classList.add('border-gray-600');
+                const preBadge = preCropSlot.querySelector('.status-badge');
+                if (preBadge) {
+                    preBadge.innerText = 'WAIT';
+                    preBadge.className = 'status-badge text-[10px] px-2 py-0.5 rounded bg-gray-600 text-white';
+                }
+            }
+        }
+
+        function addHistory(imgObj) {
+            const container = document.getElementById('history-container');
+            const placeholder = document.getElementById('history-empty');
+            if (placeholder) placeholder.remove();
+
+            const isNG = imgObj.status === 'NG';
+            const isWait = imgObj.status === 'WAIT';
+
+            let displayStatus = imgObj.status;
+            if (isWait) displayStatus = 'OK?';
+
+            const borderColor = isNG ? 'border-ng' : 'border-ok';
+            const textColor = isNG ? 'text-white' : 'text-ok';
+            const bgColor = isNG ? 'bg-ng' : 'bg-black/80';
+            const shadow = isNG ? 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+
+            // Generate Timestamp
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            const div = document.createElement('div');
+            // Added cursor-pointer and hover effects for interactivity
+            div.className = `history-item flex-none h-[calc(100%-8px)] aspect-[4/3] rounded-md overflow-hidden relative border-2 ${borderColor} ${shadow} flex items-center justify-center bg-black/50 ml-1 transition-all cursor-pointer hover:scale-[1.02] hover:z-10`;
+
+            div.innerHTML = `
+                <img src="${imgObj.src}" class="w-full h-full object-cover opacity-90" />
+                
+                <!-- Time overlay (Thumbnail) -->
+                <div class="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-1 pt-0.5 pointer-events-none">
+                    <div class="text-[8px] text-gray-300 font-mono text-center leading-tight">
+                        ${timeStr.split(' ')[0]}<br/>
+                        <span class="text-white font-bold">${timeStr.split(' ')[1]}</span>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-0 left-0 right-0 ${bgColor} text-center text-[10px] font-black tracking-widest py-0.5 ${textColor}">
+                    ${displayStatus}
+                </div>
+            `;
+
+            // ClickEvent for pop-up
+            div.addEventListener('click', () => {
+                const modal = document.getElementById('image-modal');
+                const modalImg = document.getElementById('modal-img');
+                const modalTime = document.getElementById('modal-time');
+                const modalStatus = document.getElementById('modal-status');
+
+                if (modal && modalImg && modalTime && modalStatus) {
+                    modalImg.src = imgObj.src;
+                    modalTime.innerText = timeStr;
+                    modalStatus.innerText = displayStatus;
+                    modalStatus.className = 'font-bold tracking-widest ' + (isNG ? 'text-red-400' : 'text-emerald-400');
+                    modal.classList.remove('hidden');
+                }
+            });
+
+            container.prepend(div);
+
+            if (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // Expanded Image Modal handling
+        document.addEventListener('DOMContentLoaded', () => {
+            const modalEl = document.getElementById('image-modal');
+            const closeBtnEl = document.getElementById('modal-close');
+            if (modalEl) {
+                modalEl.addEventListener('click', (e) => {
+                    if (e.target === modalEl || e.target === closeBtnEl || (closeBtnEl && closeBtnEl.contains(e.target))) {
+                        modalEl.classList.add('hidden');
+                    }
+                });
+            }
+        });
+
+        // Initialize
+        connectWS();
+    </script>
+
+    <!-- Expanded Image Pop-up Modal -->
+    <div id="image-modal"
+        class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center transition-all p-4">
+        <!-- Close button -->
+        <button id="modal-close"
+            class="absolute top-6 right-6 text-white hover:text-red-500 transition-colors z-[60] cursor-pointer ring-0 outline-none">
+            <i class="fa-solid fa-xmark text-4xl"></i>
+        </button>
+
+        <div class="relative max-w-[95vw] max-h-[95vh] flex flex-col items-center">
+            <img id="modal-img" src=""
+                class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-gray-700">
+            <!-- Metadata overlay -->
+            <div
+                class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 px-6 py-2 rounded-full text-white font-mono text-sm flex gap-4 shadow-xl border border-gray-600 whitespace-nowrap">
+                <div class="flex items-center gap-2"><i class="fa-solid fa-clock text-blue-400"></i> <span
+                        id="modal-time"></span></div>
+                <div class="flex items-center gap-2"><i class="fa-solid fa-microchip text-yellow-400"></i>
+                    <span>Status:</span> <span id="modal-status" class="font-bold tracking-widest"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

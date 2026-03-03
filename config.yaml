@@ -1,0 +1,45 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+tcp_receivers:
+  camera_0:
+    port: 8080
+    id: 0
+  camera_1:
+    port: 8081
+    id: 1
+
+models:
+  masked_surface:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_surface_masked_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.4
+  pre_crop:
+    hef: ""
+    size: 320
+    threshold: 0.5
+  crop_1:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_1_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.27387965 
+  crop_2:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_2_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.2717024
+  crop_3:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_3_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.26577765
+  crop_4:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_4_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.21927136
+  crop_5:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_5_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.28599495
+  crop_6:
+    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_6_grayscale_0.1L123.hef"
+    size: 320
+    threshold: 0.22712386
