@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Inference Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -70,7 +72,18 @@
         </div>
 
         <div class="flex gap-4">
-            <div class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[100px]">
+            <div
+                class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[140px] flex flex-col justify-center">
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Last Feed Time</div>
+                <div id="last-feed-time" class="text-white font-mono font-bold text-xs">-</div>
+            </div>
+            <div
+                class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[120px] flex flex-col justify-center">
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Total Inference Time</div>
+                <div id="total-inference-time" class="text-white font-mono font-bold text-sm">0.000s</div>
+            </div>
+            <div
+                class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[100px] flex flex-col justify-center">
                 <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Status</div>
                 <div id="connection-status"
                     class="text-yellow-400 font-bold text-sm flex items-center justify-center gap-1.5">
@@ -78,6 +91,12 @@
                     Connecting
                 </div>
             </div>
+            <button onclick="toggleSettingsModal()"
+                class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[80px] hover:bg-slate-800 transition-colors cursor-pointer group">
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5 group-hover:text-blue-400">
+                    Settings</div>
+                <div class="text-white font-mono font-bold text-sm"><i class="fa-solid fa-gear"></i></div>
+            </button>
             <div class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[80px]">
                 <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Global FPS</div>
                 <div id="fps-counter" class="text-white font-mono font-bold text-sm">0</div>
@@ -86,10 +105,40 @@
     </header>
 
     <!-- Main Content (Middle Row) -->
-    <main class="flex-1 flex gap-4 min-h-0">
+    <main class="flex-1 flex gap-4 min-h-0 relative overflow-hidden">
 
-        <!-- Left Col: Pre-Crop -->
-        <div class="flex-[1.8] flex flex-col min-w-0 h-full">
+        <!-- Main Workspace (Takes full width intuitively) -->
+        <div id="main-workspace" class="flex-1 flex flex-col gap-4 min-w-0 h-full transition-all duration-500">
+            <!-- Global Status Box -->
+            <div id="global-status"
+                class="flex-none h-[12%] glass rounded-2xl flex justify-between items-center border-4 border-gray-600 bg-gray-800/50 shadow-xl transition-colors duration-300 relative px-4 md:px-8">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-tight">Global
+                        Status</span>
+                    <span id="global-status-text"
+                        class="text-3xl md:text-4xl font-black text-gray-400 tracking-widest uppercase drop-shadow-md leading-none h-10 flex items-center mt-1 md:mt-0">WAIT</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Toggle Graph Sidebar -->
+                    <button onclick="toggleGraphSidebar()"
+                        class="group flex items-center gap-2 md:gap-3 bg-slate-900/60 hover:bg-slate-800 border-2 border-slate-600 hover:border-blue-500 rounded-xl px-3 py-2 md:px-4 md:py-2.5 transition-all shadow-lg">
+                        <span
+                            class="text-[10px] md:text-xs font-bold text-gray-300 uppercase tracking-widest group-hover:text-blue-400">Trend</span>
+                        <i
+                            class="fa-solid fa-chart-line text-gray-400 group-hover:text-blue-400 text-base md:text-lg"></i>
+                    </button>
+                    <!-- Toggle Previews Sidebar -->
+                    <button onclick="toggleSidebar()"
+                        class="group flex items-center gap-2 md:gap-3 bg-slate-900/60 hover:bg-slate-800 border-2 border-slate-600 hover:border-blue-500 rounded-xl px-3 py-2 md:px-4 md:py-2.5 transition-all shadow-lg">
+                        <span
+                            class="text-[10px] md:text-xs font-bold text-gray-300 uppercase tracking-widest group-hover:text-blue-400">Heatmaps</span>
+                        <i class="fa-solid fa-bars text-gray-400 group-hover:text-blue-400 text-base md:text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pre-Crop (Left Col equivalent) -->
             <div id="slot-pre_crop"
                 class="glass rounded-2xl p-2 flex-1 flex flex-col slot border-4 border-gray-600 relative overflow-hidden transition-colors duration-300">
                 <div
@@ -98,50 +147,80 @@
                     <div class="status-badge text-[10px] px-2 py-0.5 rounded bg-gray-600 text-white">WAIT</div>
                 </div>
 
-                <div class="absolute top-3 right-3 z-10 flex gap-2">
-                    <!-- Removed Score display from Pre_Crop -->
-                </div>
-
                 <div
                     class="flex-1 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-xl overflow-hidden mt-12">
                     <img class="img-display h-full w-full object-contain absolute opacity-0 transition-opacity duration-300"
                         src="" alt="Pre_Crop" />
-                    <span class="placeholder-text text-gray-500 font-medium">Waiting for inference data...</span>
+                    <span
+                        class="placeholder-text text-gray-500 font-medium whitespace-nowrap overflow-hidden text-ellipsis px-4 text-center">Waiting
+                        for inference data...</span>
                 </div>
             </div>
         </div>
 
-        <!-- Right Col: Control Panel & Crops -->
-        <div class="flex-1 flex flex-col gap-3 min-w-0 min-h-0 h-full">
+        <!-- Hidden Graph Sidebar -->
+        <div id="graph-sidebar"
+            class="absolute right-0 top-0 h-full w-[450px] max-w-[90vw] bg-[#0f172a]/95 backdrop-blur-xl border-l-[3px] border-slate-600 flex flex-col gap-3 p-3 transition-transform duration-500 translate-x-[110%] z-40 shadow-[-15px_0_30px_rgba(0,0,0,0.6)] rounded-l-2xl">
+            <!-- Sidebar Header -->
+            <div
+                class="flex justify-between items-center bg-slate-800/80 rounded-xl p-3 shadow-md border border-slate-600 shrink-0">
+                <h2 class="text-white font-bold text-sm tracking-wider uppercase flex items-center gap-2 pl-1">
+                    <i class="fa-solid fa-chart-line text-blue-400"></i> Trend Analysis
+                </h2>
+                <div class="flex items-center gap-3">
+                    <span id="avg-score-display"
+                        class="font-mono text-[10px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded shadow-inner border border-blue-500/20">
+                        MULTI-REGION
+                    </span>
+                    <button onclick="toggleGraphSidebar()"
+                        class="text-gray-400 hover:text-white hover:bg-red-500/20 bg-slate-700/50 p-2 rounded-lg transition-all border border-transparent hover:border-red-500/50">
+                        <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                    </button>
+                </div>
+            </div>
+            <div
+                class="flex-1 relative w-full h-full min-h-0 bg-black/30 rounded-xl p-2 shadow-inner border border-gray-800">
+                <canvas id="anomalyChart"></canvas>
+            </div>
+        </div>
 
-            <!-- Global Status Box -->
-            <div id="global-status"
-                class="flex-none h-[15%] glass rounded-2xl flex items-center justify-center border-4 border-gray-600 bg-gray-800/50 shadow-xl transition-colors duration-300 relative">
-                <div class="absolute top-1 left-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Global
-                    Status</div>
-                <span id="global-status-text"
-                    class="text-5xl font-black text-gray-400 tracking-widest uppercase drop-shadow-md">WAIT</span>
+        <!-- Hidden Sidebar Panel -->
+        <div id="preview-sidebar"
+            class="absolute right-0 top-0 h-full w-[450px] max-w-[90vw] bg-[#0f172a]/95 backdrop-blur-xl border-l-[3px] border-slate-600 flex flex-col gap-3 p-3 transition-transform duration-500 translate-x-[110%] z-40 shadow-[-15px_0_30px_rgba(0,0,0,0.6)] rounded-l-2xl">
+            <!-- Sidebar Header -->
+            <div
+                class="flex justify-between items-center bg-slate-800/80 rounded-xl p-3 shadow-md border border-slate-600 shrink-0">
+                <h2 class="text-white font-bold text-sm tracking-wider uppercase flex items-center gap-2 pl-1">
+                    <i class="fa-solid fa-layer-group text-blue-400"></i>
+                    Heatmap Details
+                </h2>
+                <button onclick="toggleSidebar()"
+                    class="text-gray-400 hover:text-white hover:bg-red-500/20 bg-slate-700/50 p-2 rounded-lg transition-all border border-transparent hover:border-red-500/50">
+                    <i class="fa-solid fa-xmark text-lg leading-none"></i>
+                </button>
             </div>
 
             <!-- Masked Surface -->
             <div id="slot-masked_surface"
-                class="flex-none h-[25%] glass rounded-xl p-1.5 flex flex-col slot border-2 border-gray-700 relative transition-colors duration-300">
+                class="flex-none h-[25%] glass rounded-xl p-1.5 flex flex-col slot border-2 border-slate-700 relative transition-colors duration-300">
                 <div
-                    class="absolute top-1 left-1.5 z-10 bg-black/70 px-2 py-0.5 rounded-md text-[10px] font-bold text-white shadow-md">
+                    class="absolute top-1 left-1.5 z-10 bg-black/70 px-2 py-0.5 rounded-md text-[10px] font-bold text-white shadow-md leading-tight">
                     MASKED_SURFACE
                 </div>
                 <!-- Stats floating right -->
                 <div class="absolute top-1 right-1.5 z-10 flex gap-1">
                     <span
-                        class="score-val text-[10px] font-mono bg-black/70 px-1 py-0.5 rounded text-white shadow-md">0.000</span>
+                        class="score-val text-[10px] font-mono bg-black/70 px-1 py-0.5 rounded text-white shadow-md leading-tight">0.000</span>
                     <span
-                        class="status-badge text-[10px] font-bold bg-gray-600 px-1 py-0.5 rounded text-white shadow-md">WAIT</span>
+                        class="status-badge text-[10px] font-bold bg-gray-600 px-1 py-0.5 rounded text-white shadow-md leading-tight">WAIT</span>
                 </div>
                 <div
                     class="flex-1 mt-6 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-lg overflow-hidden">
                     <img class="img-display h-full w-full object-contain absolute opacity-0 transition-opacity duration-300"
                         src="" alt="Masked Surface" />
-                    <span class="placeholder-text text-gray-600 text-[10px]">No Data</span>
+                    <span
+                        class="placeholder-text text-gray-600 text-[10px] whitespace-nowrap overflow-hidden text-ellipsis">No
+                        Data</span>
                 </div>
             </div>
 
@@ -151,21 +230,21 @@
                 <script>
                     for (let i = 1; i <= 6; i++) {
                         document.write(`
-                            <div id="slot-crop_${i}" class="glass rounded-xl p-1.5 flex flex-col slot border-2 border-gray-700 relative overflow-hidden transition-colors duration-300">
-                                <div class="absolute top-1 left-1 z-10 bg-black/70 px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-md">
+                            <div id="slot-crop_${i}" class="glass rounded-xl p-1.5 flex flex-col slot border-2 border-slate-700 relative overflow-hidden transition-colors duration-300">
+                                <div class="absolute top-1 left-1 z-10 bg-black/70 px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-md leading-tight">
                                     CROP_${i}
                                 </div>
                                 <div class="absolute top-1 right-1 z-10 flex gap-1 items-center">
-                                    <span class="status-badge text-[8px] font-bold px-1 rounded bg-gray-600 text-white">WAIT</span>
+                                    <span class="status-badge text-[8px] font-bold px-1 rounded bg-gray-600 text-white leading-tight">WAIT</span>
                                 </div>
                                 
                                 <div class="flex-1 mt-5 w-full relative flex items-center justify-center min-h-0 bg-black/40 rounded-md overflow-hidden">
                                     <img class="img-display h-full w-full object-cover absolute opacity-0 transition-opacity duration-300" src="" alt="Crop ${i}" />
-                                    <span class="placeholder-text text-gray-700 text-[8px]">Wait</span>
+                                    <span class="placeholder-text text-gray-700 text-[8px] whitespace-nowrap overflow-hidden text-ellipsis leading-tight">Wait</span>
                                 </div>
                                 
                                 <div class="absolute bottom-1 left-1 right-1 flex justify-center z-10">
-                                    <div class="bg-black/70 px-1.5 py-0.5 rounded shadow-md pointer-events-none">
+                                    <div class="bg-black/70 px-1.5 py-0.5 rounded shadow-md pointer-events-none leading-tight">
                                         <span class="score-val text-[10px] font-mono font-bold text-white">0.000</span>
                                     </div>
                                 </div>
@@ -192,6 +271,38 @@
     </div>
 
     <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('preview-sidebar');
+            const graphSidebar = document.getElementById('graph-sidebar');
+            if (sidebar.classList.contains('translate-x-[110%]')) {
+                sidebar.classList.remove('translate-x-[110%]');
+                sidebar.classList.add('translate-x-0');
+                if (!graphSidebar.classList.contains('translate-x-[110%]')) {
+                    graphSidebar.classList.add('translate-x-[110%]');
+                    graphSidebar.classList.remove('translate-x-0');
+                }
+            } else {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('translate-x-[110%]');
+            }
+        }
+
+        function toggleGraphSidebar() {
+            const sidebar = document.getElementById('graph-sidebar');
+            const heatmapSidebar = document.getElementById('preview-sidebar');
+            if (sidebar.classList.contains('translate-x-[110%]')) {
+                sidebar.classList.remove('translate-x-[110%]');
+                sidebar.classList.add('translate-x-0');
+                if (!heatmapSidebar.classList.contains('translate-x-[110%]')) {
+                    heatmapSidebar.classList.add('translate-x-[110%]');
+                    heatmapSidebar.classList.remove('translate-x-0');
+                }
+            } else {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('translate-x-[110%]');
+            }
+        }
+
         let ws;
         let frameCount = 0;
         let lastTime = performance.now();
@@ -199,6 +310,149 @@
         let slotStatuses = {};
         let currentGlobalStatus = 'WAIT';
         let lastPreCropImageObj = null;
+        let globalStatusConfig = {};
+        let currentRoundInferenceTime = 0;
+
+        // Chart Data
+        let anomalyChart = null;
+        let currentRoundScores = {};
+        const MAX_CHART_POINTS = 30;
+
+        const chartRegions = [
+            { id: 'masked_surface', label: 'MASKED_SURFACE', color: '#ec4899', bgColor: 'rgba(236, 72, 153, 0.1)' }, // Pink
+            { id: 'crop_1', label: 'CROP_1', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.1)' },         // Red
+            { id: 'crop_2', label: 'CROP_2', color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.1)' },         // Orange
+            { id: 'crop_3', label: 'CROP_3', color: '#eab308', bgColor: 'rgba(234, 179, 8, 0.1)' },          // Yellow
+            { id: 'crop_4', label: 'CROP_4', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)' },          // Green
+            { id: 'crop_5', label: 'CROP_5', color: '#0ea5e9', bgColor: 'rgba(14, 165, 233, 0.1)' },         // Sky Blue
+            { id: 'crop_6', label: 'CROP_6', color: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.1)' }          // Violet
+        ];
+
+        function initChart() {
+            const ctx = document.getElementById('anomalyChart');
+            if (!ctx) return;
+
+            const datasets = chartRegions.map(region => ({
+                label: region.label,
+                data: [],
+                borderColor: region.color,
+                backgroundColor: region.bgColor,
+                borderWidth: 1.5,
+                pointRadius: 1,
+                pointHoverRadius: 4,
+                pointBackgroundColor: region.color,
+                fill: false,
+                tension: 0.4
+            }));
+
+            anomalyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#94a3b8',
+                                font: { size: 8 },
+                                boxWidth: 8,
+                                boxHeight: 8,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { size: 10 },
+                            bodyFont: { size: 10 },
+                            padding: 8,
+                            boxPadding: 4,
+                            usePointStyle: true,
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10, family: 'monospace' }
+                            }
+                        }
+                    },
+                    animation: { duration: 300 }
+                }
+            });
+        }
+
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config/global-status');
+                if (res.ok) {
+                    globalStatusConfig = await res.json();
+                }
+            } catch (e) {
+                console.error("Failed to fetch settings", e);
+            }
+        }
+
+        async function saveConfig() {
+            try {
+                const res = await fetch('/api/config/global-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings: globalStatusConfig })
+                });
+                if (res.ok) {
+                    toggleSettingsModal();
+                }
+            } catch (e) {
+                console.error("Failed to save settings", e);
+            }
+        }
+
+        function toggleSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            if (modal.classList.contains('hidden')) {
+                // Populate toggles
+                const container = document.getElementById('settings-toggles');
+                container.innerHTML = '';
+
+                const models = ['masked_surface', 'crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6'];
+
+                models.forEach(model => {
+                    const isChecked = globalStatusConfig[model] !== false;
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between bg-dark/50 p-3 rounded-xl border border-gray-700/50";
+                    div.innerHTML = `
+                        <span class="text-slate-200 font-medium uppercase text-sm tracking-wider">${model.replace('_', ' ')}</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" class="sr-only peer" ${isChecked ? 'checked' : ''} onchange="updateTempConfig('${model}', this.checked)">
+                          <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                    `;
+                    container.appendChild(div);
+                });
+
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function updateTempConfig(model, checked) {
+            globalStatusConfig[model] = checked;
+        }
 
         function connectWS() {
             const host = window.location.hostname;
@@ -241,18 +495,63 @@
 
             // A pre_crop signifies the start of a completely new frame
             if (image_id === 'pre_crop') {
+                // Record ending round metrics to chart
+                if (Object.keys(currentRoundScores).length > 0 && anomalyChart) {
+                    const timeStr = new Date().toLocaleTimeString('en-GB');
+                    anomalyChart.data.labels.push(timeStr);
+
+                    // Push data for each specific region
+                    chartRegions.forEach((region, index) => {
+                        // If score is missing for this round, fallback to previous value or 0
+                        const val = currentRoundScores[region.id] !== undefined ? currentRoundScores[region.id] : null;
+                        anomalyChart.data.datasets[index].data.push(val);
+                    });
+
+                    if (anomalyChart.data.labels.length > MAX_CHART_POINTS) {
+                        anomalyChart.data.labels.shift();
+                        anomalyChart.data.datasets.forEach(dataset => {
+                            dataset.data.shift();
+                        });
+                    }
+
+                    anomalyChart.update();
+                }
+
+                // Clear for new round
+                currentRoundScores = {};
+
                 if (lastPreCropImageObj && Object.keys(slotStatuses).length > 0) {
                     addHistory(lastPreCropImageObj);
                 }
 
                 lastPreCropImageObj = { src: image, status: currentGlobalStatus };
                 slotStatuses = {};
+
+                // Update Last Feed Time
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                document.getElementById('last-feed-time').innerText = timeStr;
+
+                // Reset Total Inference Time
+                currentRoundInferenceTime = 0;
+                document.getElementById('total-inference-time').innerText = '0.000s';
+            } else {
+                // Accumulate score if it's a heatmap crop
+                if (score !== undefined && score !== null) {
+                    currentRoundScores[image_id] = score;
+                }
             }
 
             if (!slot && image_id !== 'pre_crop') return;
 
             if (image_id !== 'pre_crop') {
                 slotStatuses[image_id] = status;
+
+                // Accumulate Inference Time
+                if (data.inference_time) {
+                    currentRoundInferenceTime += data.inference_time;
+                    document.getElementById('total-inference-time').innerText = currentRoundInferenceTime.toFixed(3) + 's';
+                }
             }
 
             if (slot) {
@@ -292,8 +591,26 @@
             for (const c of cropSlots) {
                 const s = document.getElementById(`slot-${c}`);
                 if (s) {
-                    if (s.classList.contains('border-ng')) visualIsNG = true;
-                    else if (s.classList.contains('border-ok')) visualOkCount++;
+                    const isIncluded = globalStatusConfig[c] !== false;
+                    const badge = s.querySelector('.status-badge');
+
+                    if (!isIncluded) {
+                        s.classList.add('opacity-40');
+                        if (badge && !badge.innerText.includes('IGN')) {
+                            badge.innerText += ' (IGN)';
+                            badge.classList.remove('bg-ok/20', 'bg-ng');
+                            badge.classList.add('bg-gray-600');
+                        }
+                    } else {
+                        s.classList.remove('opacity-40');
+                        if (badge && badge.innerText.includes(' (IGN)')) {
+                            badge.innerText = badge.innerText.replace(' (IGN)', '');
+                        }
+
+                        // Update visual NG/OK based on borders since classes are driven by status
+                        if (s.classList.contains('border-ng')) visualIsNG = true;
+                        else if (s.classList.contains('border-ok')) visualOkCount++;
+                    }
                 }
             }
 
@@ -437,9 +754,20 @@
                     }
                 });
             }
+
+            const settingsModal = document.getElementById('settings-modal');
+            if (settingsModal) {
+                settingsModal.addEventListener('click', (e) => {
+                    if (e.target === settingsModal) {
+                        settingsModal.classList.add('hidden');
+                    }
+                });
+            }
         });
 
         // Initialize
+        fetchConfig();
+        initChart();
         connectWS();
     </script>
 
@@ -463,6 +791,35 @@
                 <div class="flex items-center gap-2"><i class="fa-solid fa-microchip text-yellow-400"></i>
                     <span>Status:</span> <span id="modal-status" class="font-bold tracking-widest"></span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal"
+        class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center transition-all p-4">
+        <div class="bg-card w-[400px] max-w-full rounded-2xl shadow-2xl border border-gray-700 p-6 flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2"><i
+                        class="fa-solid fa-sliders text-blue-400"></i> Global Status Config</h3>
+                <button onclick="toggleSettingsModal()"
+                    class="text-gray-400 hover:text-white transition-colors cursor-pointer ring-0 outline-none">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="text-sm text-gray-400 mb-2">Select which models should be included when determining the overall
+                OK/NG Global Status.</div>
+
+            <div id="settings-toggles" class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- Injected via JS -->
+            </div>
+
+            <div class="mt-4 flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button onclick="toggleSettingsModal()"
+                    class="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors font-semibold">Cancel</button>
+                <button onclick="saveConfig()"
+                    class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/30 font-bold">Save</button>
             </div>
         </div>
     </div>
