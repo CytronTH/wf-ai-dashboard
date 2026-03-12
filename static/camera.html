@@ -82,8 +82,11 @@
         <div class="flex gap-4">
             <div
                 class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[140px] flex flex-col justify-center">
-                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5">Last Feed Time</div>
-                <div id="last-feed-time" class="text-white font-mono font-bold text-xs">-</div>
+                <div class="text-gray-400 text-[10px] uppercase tracking-wider mb-0.5 whitespace-nowrap">Last Feed Time</div>
+                <div class="flex flex-col items-center leading-none">
+                    <span id="last-feed-time" class="text-white font-mono font-bold text-xs">-</span>
+                    <span id="elapsed-feed-time" class="text-gray-500 font-mono text-[9px] uppercase tracking-widest mt-0.5">...</span>
+                </div>
             </div>
             <div
                 class="text-center bg-dark/50 p-2 rounded-lg border border-gray-700 min-w-[120px] flex flex-col justify-center">
@@ -97,6 +100,33 @@
                     class="text-yellow-400 font-bold text-sm flex items-center justify-center gap-1.5">
                     <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
                     Connecting
+                </div>
+            </div>
+
+            <!-- GPIO Indicators -->
+            <div class="hidden md:flex items-center gap-2 border-l border-gray-700 pl-3 h-full">
+                <!-- GPIO 23 -->
+                <div id="wrapper-gpio-23" class="flex flex-col items-center justify-center bg-gray-800/50 rounded-lg px-2 py-1 border border-gray-700 min-w-[70px] transition-all duration-300">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <div id="indicator-gpio-23" class="w-2 h-2 rounded-full bg-gray-500 shadow-inner"></div>
+                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">GPIO 23</span>
+                    </div>
+                    <div class="flex flex-col items-center leading-tight">
+                        <span id="time-gpio-23" class="text-[9px] font-mono font-bold text-gray-400">WAIT</span>
+                        <span id="elapsed-gpio-23" class="text-[8px] font-mono text-gray-500 mt-0.5 uppercase tracking-widest text-center truncate w-full">...</span>
+                    </div>
+                </div>
+                
+                <!-- GPIO 24 -->
+                <div id="wrapper-gpio-24" class="flex flex-col items-center justify-center bg-gray-800/50 rounded-lg px-2 py-1 border border-gray-700 min-w-[70px] transition-all duration-300">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <div id="indicator-gpio-24" class="w-2 h-2 rounded-full bg-gray-500 shadow-inner"></div>
+                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">GPIO 24</span>
+                    </div>
+                    <div class="flex flex-col items-center leading-tight">
+                        <span id="time-gpio-24" class="text-[9px] font-mono font-bold text-gray-400">WAIT</span>
+                        <span id="elapsed-gpio-24" class="text-[8px] font-mono text-gray-500 mt-0.5 uppercase tracking-widest text-center truncate w-full">...</span>
+                    </div>
                 </div>
             </div>
             <button onclick="toggleNgStatsModal()"
@@ -590,6 +620,12 @@
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
+                if (data.type === 'gpio') {
+                    updateGpioStatus(data);
+                    return;
+                }
+                
                 updateUI(data);
 
                 frameCount++;
@@ -602,6 +638,111 @@
                 }
             };
         }
+
+        // --- GPIO Real-time Status Tracking ---
+        const gpioTracking = {
+            23: { state: 0, lastChanged: null },
+            24: { state: 0, lastChanged: null }
+        };
+
+        let globalPlaneTimeTracker = null; // Track when the last pre_crop image arrived for the entire plane
+
+        function updateGpioStatus(data) {
+            const pin = data.pin;
+            const state = data.state;
+            const isoTime = data.last_changed;
+            
+            if (!isoTime) return;
+
+            gpioTracking[pin].state = state;
+            gpioTracking[pin].lastChanged = new Date(isoTime);
+
+            const wrapperEl = document.getElementById(`wrapper-gpio-${pin}`);
+            const indicatorEl = document.getElementById(`indicator-gpio-${pin}`);
+            const timeEl = document.getElementById(`time-gpio-${pin}`);
+            const elapsedEl = document.getElementById(`elapsed-gpio-${pin}`);
+
+            if(!wrapperEl || !indicatorEl || !timeEl) return;
+
+            // Format Time Tag (HH:MM:SS)
+            const d = gpioTracking[pin].lastChanged;
+            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+            timeEl.innerText = timeStr;
+
+            // Visual Update
+            wrapperEl.classList.remove('border-gray-700', 'border-ok', 'border-yellow-400', 'bg-gray-800/50', 'bg-ok/10', 'bg-yellow-400/10');
+            indicatorEl.classList.remove('bg-gray-500', 'bg-ok', 'bg-yellow-400', 'shadow-[0_0_8px_rgba(16,185,129,0.8)]', 'shadow-[0_0_8px_rgba(250,204,21,0.8)]');
+            
+            if (state === 1) {
+                // HIGH state visual
+                const colorClass = pin === 23 ? 'ok' : 'yellow-400';
+                wrapperEl.classList.add(`border-${colorClass}`, `bg-${colorClass}/10`);
+                indicatorEl.classList.add(`bg-${colorClass}`, `shadow-[0_0_8px_rgba(${pin === 23 ? '16,185,129' : '250,204,21'},0.8)]`);
+            } else {
+                // LOW state visual
+                wrapperEl.classList.add('border-gray-700', 'bg-gray-800/50');
+                indicatorEl.classList.add('bg-gray-500');
+            }
+            
+            updateElapsedTickers();
+        }
+
+        function updateElapsedTickers() {
+            const now = new Date();
+            [23, 24].forEach(pin => {
+                const tracking = gpioTracking[pin];
+                if (!tracking.lastChanged) return;
+
+                const elapsedEl = document.getElementById(`elapsed-gpio-${pin}`);
+                if (!elapsedEl) return;
+
+                const diffMs = now - tracking.lastChanged;
+                
+                if (diffMs < 1000) {
+                    elapsedEl.innerText = "Just now";
+                } else if (diffMs < 60000) {
+                    const sec = Math.floor(diffMs / 1000);
+                    elapsedEl.innerText = `${sec}S AGO`;
+                } else if (diffMs < 3600000) {
+                    const min = Math.floor(diffMs / 60000);
+                    elapsedEl.innerText = `${min}M ${Math.floor((diffMs % 60000) / 1000)}S AGO`;
+                } else {
+                    const hr = Math.floor(diffMs / 3600000);
+                    const min = Math.floor((diffMs % 3600000) / 60000);
+                    elapsedEl.innerText = `${hr}H ${min}M AGO`;
+                }
+            });
+        }
+
+        function updateElapsedFeedTime() {
+            if (!globalPlaneTimeTracker) return;
+            const elapsedEl = document.getElementById('elapsed-feed-time');
+            if (!elapsedEl) return;
+
+            const now = new Date();
+            const diffMs = now - globalPlaneTimeTracker;
+            
+            if (diffMs < 1000) {
+                elapsedEl.innerText = "Just now";
+            } else if (diffMs < 60000) {
+                const sec = Math.floor(diffMs / 1000);
+                elapsedEl.innerText = `${sec}S AGO`;
+            } else if (diffMs < 3600000) {
+                const min = Math.floor(diffMs / 60000);
+                elapsedEl.innerText = `${min}M ${Math.floor((diffMs % 60000) / 1000)}S AGO`;
+            } else {
+                const hr = Math.floor(diffMs / 3600000);
+                const min = Math.floor((diffMs % 3600000) / 60000);
+                elapsedEl.innerText = `${hr}H ${min}M AGO`;
+            }
+        }
+        
+        // Start elapsed time ticker loop
+        setInterval(() => {
+            updateElapsedTickers();
+            updateElapsedFeedTime();
+        }, 1000);
+        // --- End GPIO Logic ---
 
         // Global state for filtering
         let targetCameraId = new URLSearchParams(window.location.search).get('id') || '0';
@@ -685,6 +826,7 @@
 
                 // Update Last Feed Time
                 const now = new Date();
+                globalPlaneTimeTracker = now; // Add reference for elapsed ticker
                 const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
                 document.getElementById('last-feed-time').innerText = timeStr;
 

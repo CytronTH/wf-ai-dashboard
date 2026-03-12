@@ -83,3 +83,11 @@ models:
     size: 320
     threshold: 0.22712386
     use_for_global: true
+gpio_triggers:
+  '6': true
+  '5': true
+  '0': true
+  '1': true
+  '2': true
+  '3': true
+  '4': true
