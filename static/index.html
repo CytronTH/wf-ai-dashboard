@@ -58,6 +58,18 @@
 
 <body class="h-screen w-screen p-6 flex flex-col gap-6 bg-dark text-slate-100 overflow-hidden relative">
 
+    <!-- NG Freeze Overlay -->
+    <div id="ng-freeze-overlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm shadow-[inset_0_0_150px_rgba(239,68,68,0.5)] flex-col items-center justify-center hidden" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
+        <div class="text-ng text-9xl font-black mb-8 animate-pulse drop-shadow-[0_0_50px_rgba(239,68,68,1)] uppercase tracking-widest text-center">
+            <i class="fa-solid fa-triangle-exclamation mb-4"></i><br>
+            NG DETECTED
+        </div>
+        <p class="text-gray-300 text-xl font-medium mb-12 tracking-widest uppercase">System Paused</p>
+        <button onclick="resumeGlobalDemo()" class="bg-gray-800 hover:bg-gray-700 text-white border-2 border-gray-600 rounded-2xl px-16 py-6 text-3xl font-extrabold uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 group">
+            <i class="fa-solid fa-check text-ok group-hover:scale-110 transition-transform mr-4"></i> OK
+        </button>
+    </div>
+
     <!-- Background Decor -->
     <div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
@@ -76,6 +88,20 @@
         </div>
 
         <div class="flex gap-4">
+            <!-- Global Demo Toggle -->
+            <div class="flex items-center gap-2 bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 shadow-inner group transition-all" id="global-demo-container">
+                <button id="btn-global-demo" onclick="toggleGlobalDemo()" 
+                    class="text-gray-500 hover:text-blue-400 transition-colors flex items-center justify-center w-8 h-8 rounded-full" title="Toggle Global Demo (Simulation)">
+                    <i class="fa-solid fa-globe text-lg"></i>
+                </button>
+                <div class="flex items-center gap-1">
+                    <input type="number" id="demo-interval-input" value="5" min="1" max="60" 
+                        title="Demo Interval (Seconds)"
+                        class="bg-black/50 border border-gray-600 rounded text-xs text-white w-10 text-center focus:outline-none focus:border-blue-500 h-5 font-mono">
+                    <span class="text-[9px] text-gray-500 font-mono">SEC</span>
+                </div>
+            </div>
+
             <!-- Refresh Button -->
             <button onclick="window.location.reload();"
                 class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
@@ -93,6 +119,34 @@
                     Connecting...
                 </div>
             </div>
+            
+            <!-- GPIO Indicators -->
+            <div class="flex items-center gap-3 border-l border-gray-700/50 pl-4 h-full">
+                <!-- GPIO 23 -->
+                <div id="wrapper-gpio-23" class="flex flex-col items-center justify-center bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 min-w-[90px] transition-all duration-300">
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <div id="indicator-gpio-23" class="w-2.5 h-2.5 rounded-full bg-gray-500 shadow-inner"></div>
+                        <span class="text-xs font-bold text-gray-300 tracking-wider">GPIO 23</span>
+                    </div>
+                    <div class="flex flex-col items-center leading-tight">
+                        <span id="time-gpio-23" class="text-[10px] font-mono font-bold text-gray-400">WAIT</span>
+                        <span id="elapsed-gpio-23" class="text-[9px] font-mono text-gray-500 mt-0.5 uppercase tracking-widest text-center truncate w-full">...</span>
+                    </div>
+                </div>
+                
+                <!-- GPIO 24 -->
+                <div id="wrapper-gpio-24" class="flex flex-col items-center justify-center bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 min-w-[90px] transition-all duration-300">
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <div id="indicator-gpio-24" class="w-2.5 h-2.5 rounded-full bg-gray-500 shadow-inner"></div>
+                        <span class="text-xs font-bold text-gray-300 tracking-wider">GPIO 24</span>
+                    </div>
+                    <div class="flex flex-col items-center leading-tight">
+                        <span id="time-gpio-24" class="text-[10px] font-mono font-bold text-gray-400">WAIT</span>
+                        <span id="elapsed-gpio-24" class="text-[9px] font-mono text-gray-500 mt-0.5 uppercase tracking-widest text-center truncate w-full">...</span>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </header>
 
@@ -107,6 +161,10 @@
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 1
                 </h2>
                 <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span id="time-plane1" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane1" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
                     <button onclick="toggleGpio('0,1', this)" data-cameras="0,1" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
                         <i class="fa-solid fa-bolt"></i>
                     </button>
@@ -145,6 +203,10 @@
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 2
                 </h2>
                 <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span id="time-plane2" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane2" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
                     <button onclick="toggleGpio('2,3', this)" data-cameras="2,3" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
                         <i class="fa-solid fa-bolt"></i>
                     </button>
@@ -184,6 +246,10 @@
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 3
                 </h2>
                 <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span id="time-plane3" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane3" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
                     <button onclick="toggleGpio('4', this)" data-cameras="4" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
                         <i class="fa-solid fa-bolt"></i>
                     </button>
@@ -214,6 +280,10 @@
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 4
                 </h2>
                 <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span id="time-plane4" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane4" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
                     <button onclick="toggleGpio('5', this)" data-cameras="5" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
                         <i class="fa-solid fa-bolt"></i>
                     </button>
@@ -244,6 +314,10 @@
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 5
                 </h2>
                 <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span id="time-plane5" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane5" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
                     <button onclick="toggleGpio('6', this)" data-cameras="6" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
                         <i class="fa-solid fa-bolt"></i>
                     </button>
@@ -294,9 +368,122 @@
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                updateHubUI(data);
+                if (data.type === 'gpio') {
+                    updateGpioStatus(data);
+                } else if (data.type === 'global_demo_freeze') {
+                    showNgFreezeOverlay();
+                } else {
+                    updateHubUI(data);
+                }
             };
         }
+
+        // --- Demo NG Freeze Logic ---
+        function showNgFreezeOverlay() {
+            const overlay = document.getElementById('ng-freeze-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            // Trigger animation
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+            }, 10);
+        }
+
+        async function resumeGlobalDemo() {
+            const overlay = document.getElementById('ng-freeze-overlay');
+            overlay.style.opacity = '0';
+            
+            try {
+                await fetch('/api/global-demo/resume', { method: 'POST' });
+                
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                }, 500); // Wait for transition
+            } catch (e) {
+                console.error("Failed to resume global demo", e);
+                // Allow hiding even on error so user isn't stuck forever
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                }, 500);
+            }
+        }
+
+        // GPIO Real-time Status Tracking
+        const gpioTracking = {
+            23: { state: 0, lastChanged: null },
+            24: { state: 0, lastChanged: null }
+        };
+
+        function updateGpioStatus(data) {
+            const pin = data.pin;
+            const state = data.state;
+            const isoTime = data.last_changed;
+            
+            if (!isoTime) return;
+
+            gpioTracking[pin].state = state;
+            gpioTracking[pin].lastChanged = new Date(isoTime);
+
+            const wrapperEl = document.getElementById(`wrapper-gpio-${pin}`);
+            const indicatorEl = document.getElementById(`indicator-gpio-${pin}`);
+            const timeEl = document.getElementById(`time-gpio-${pin}`);
+
+            // Format Time Tag (HH:MM:SS)
+            const d = gpioTracking[pin].lastChanged;
+            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+            timeEl.innerText = timeStr;
+
+            // Visual Update
+            wrapperEl.classList.remove('border-gray-700', 'border-ok', 'border-yellow-500', 'bg-gray-800/50', 'bg-ok/10', 'bg-yellow-500/10');
+            indicatorEl.classList.remove('bg-gray-500', 'bg-ok', 'bg-yellow-500', 'shadow-[0_0_8px_rgba(16,185,129,0.8)]', 'shadow-[0_0_8px_rgba(234,179,8,0.8)]');
+            
+            if (state === 1) {
+                // HIGH state visual
+                const colorClass = pin === 23 ? 'ok' : 'yellow-500';
+                wrapperEl.classList.add(`border-${colorClass}`, `bg-${colorClass}/10`);
+                indicatorEl.classList.add(`bg-${colorClass}`, `shadow-[0_0_8px_rgba(${pin === 23 ? '16,185,129' : '234,179,8'},0.8)]`);
+            } else {
+                // LOW state visual
+                wrapperEl.classList.add('border-gray-700', 'bg-gray-800/50');
+                indicatorEl.classList.add('bg-gray-500');
+            }
+            
+            updateElapsedTickers();
+        }
+
+        function updateElapsedTickers() {
+            const now = new Date();
+            [23, 24].forEach(pin => {
+                const tracking = gpioTracking[pin];
+                if (!tracking.lastChanged) return;
+
+                const elapsedEl = document.getElementById(`elapsed-gpio-${pin}`);
+                if (!elapsedEl) return;
+
+                const diffMs = now - tracking.lastChanged;
+                
+                if (diffMs < 1000) {
+                    elapsedEl.innerText = "Just now";
+                } else if (diffMs < 60000) {
+                    const sec = Math.floor(diffMs / 1000);
+                    elapsedEl.innerText = `${sec}S AGO`;
+                } else if (diffMs < 3600000) {
+                    const min = Math.floor(diffMs / 60000);
+                    elapsedEl.innerText = `${min}M ${Math.floor((diffMs % 60000) / 1000)}S AGO`;
+                } else {
+                    const hr = Math.floor(diffMs / 3600000);
+                    const min = Math.floor((diffMs % 3600000) / 60000);
+                    elapsedEl.innerText = `${hr}H ${min}M AGO`;
+                }
+            });
+        }
+        
+        // Start elapsed time ticker loop
+        setInterval(updateElapsedTickers, 1000);
+        // --- End GPIO Logic ---
 
         // We only care about tracking global NG vs OK for thumbnails
         const cardStatusTracker = {};
@@ -306,6 +493,46 @@
             plane1: { cam0: 'OK', cam1: 'OK' },
             plane2: { cam2: 'OK', cam3: 'OK' }
         };
+
+        // --- Plane Real-time Status Tracking ---
+        const planeTimeTracker = {
+            plane1: null,
+            plane2: null,
+            plane3: null,
+            plane4: null,
+            plane5: null
+        };
+
+        function updatePlaneTimeTickers() {
+            const now = new Date();
+            Object.keys(planeTimeTracker).forEach(plane => {
+                if (!planeTimeTracker[plane]) return;
+
+                const elapsedEl = document.getElementById(`elapsed-${plane}`);
+                if (!elapsedEl) return;
+
+                const diffMs = now - planeTimeTracker[plane];
+                
+                if (diffMs < 1000) {
+                    elapsedEl.innerText = "Just now";
+                } else if (diffMs < 60000) {
+                    const sec = Math.floor(diffMs / 1000);
+                    elapsedEl.innerText = `${sec}S AGO`;
+                } else if (diffMs < 3600000) {
+                    const min = Math.floor(diffMs / 60000);
+                    elapsedEl.innerText = `${min}M ${Math.floor((diffMs % 60000) / 1000)}S AGO`;
+                } else {
+                    const hr = Math.floor(diffMs / 3600000);
+                    const min = Math.floor((diffMs % 3600000) / 60000);
+                    elapsedEl.innerText = `${hr}H ${min}M AGO`;
+                }
+            });
+        }
+        
+        setInterval(() => {
+            updatePlaneTimeTickers();
+        }, 1000);
+        // --- End Plane Tracking ---
 
         function updateHubUI(data) {
             const { camera_id, image_id, status, image } = data;
@@ -341,6 +568,30 @@
                 // Determine final status
                 let finalStatus = 'OK';
                 
+                // --- Plane Time Tracking Update ---
+                const targetPlane = groupPlaneId || `plane${parseInt(camera_id) - 1}`; 
+                if (planeTimeTracker.hasOwnProperty(targetPlane)) {
+                    const planeNow = new Date();
+                    planeTimeTracker[targetPlane] = planeNow;
+                    
+                    const timeEl = document.getElementById(`time-${targetPlane}`);
+                    if (timeEl) {
+                        const timeStr = `${String(planeNow.getHours()).padStart(2, '0')}:${String(planeNow.getMinutes()).padStart(2, '0')}:${String(planeNow.getSeconds()).padStart(2, '0')}`;
+                        timeEl.innerText = timeStr;
+                    }
+                    // For single camera planes, we need to handle the fact that they don't have a groupPlaneId defined at top of updateHubUI
+                } else if (camIdInt >= 4 && camIdInt <= 6) {
+                     const singlePlaneId = `plane${camIdInt - 1}`;
+                     const planeNow = new Date();
+                     planeTimeTracker[singlePlaneId] = planeNow;
+                     const timeEl = document.getElementById(`time-${singlePlaneId}`);
+                     if (timeEl) {
+                         const timeStr = `${String(planeNow.getHours()).padStart(2, '0')}:${String(planeNow.getMinutes()).padStart(2, '0')}:${String(planeNow.getSeconds()).padStart(2, '0')}`;
+                         timeEl.innerText = timeStr;
+                     }
+                }
+                // --- End Plane Time Tracking Update ---
+
                 if (groupPlaneId) {
                     // It's a dual camera plane
                     // Update the sub-camera tracking first based on previous round's tracking
@@ -450,6 +701,75 @@
         }
 
         fetchGpioConfig();
+
+        // --- Global Demo Mode Logic ---
+        let isGlobalDemoActive = false;
+        
+        async function fetchGlobalDemoStatus() {
+            try {
+                const res = await fetch('/api/global-demo/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    isGlobalDemoActive = data.active;
+                    document.getElementById('demo-interval-input').value = data.interval;
+                    updateGlobalDemoBtnUI();
+                }
+            } catch (e) {
+                console.error("Failed to fetch Global Demo status", e);
+            }
+        }
+
+        function updateGlobalDemoBtnUI() {
+            const btn = document.getElementById('btn-global-demo');
+            const container = document.getElementById('global-demo-container');
+            const icon = btn.querySelector('i');
+            
+            if (isGlobalDemoActive) {
+                btn.classList.remove('text-gray-500', 'hover:text-blue-400', 'hover:text-green-400');
+                btn.classList.add('text-green-400', 'animate-pulse');
+                container.classList.remove('border-gray-700', 'bg-gray-800/50');
+                container.classList.add('border-green-500/80', 'bg-green-600/20', 'shadow-[0_0_20px_rgba(34,197,94,0.5)]');
+                icon.classList.add('fa-spin'); // Make globe spin smoothly forward
+                icon.classList.remove('fa-spin-reverse');
+            } else {
+                btn.classList.add('text-gray-500', 'hover:text-green-400');
+                btn.classList.remove('text-green-400', 'animate-pulse');
+                container.classList.add('border-gray-700', 'bg-gray-800/50');
+                container.classList.remove('border-green-500/80', 'bg-green-600/20', 'shadow-[0_0_20px_rgba(34,197,94,0.5)]');
+                icon.classList.remove('fa-spin');
+            }
+        }
+
+        async function toggleGlobalDemo() {
+            const inputVal = document.getElementById('demo-interval-input').value;
+            const interval = parseFloat(inputVal) || 5.0;
+            
+            try {
+                if (isGlobalDemoActive) {
+                    // Turn off
+                    const res = await fetch('/api/global-demo/stop', { method: 'POST' });
+                    if (res.ok) {
+                        isGlobalDemoActive = false;
+                    }
+                } else {
+                    // Turn on
+                    const res = await fetch('/api/global-demo/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ interval: interval })
+                    });
+                    if (res.ok) {
+                        isGlobalDemoActive = true;
+                    }
+                }
+                updateGlobalDemoBtnUI();
+            } catch (e) {
+                console.error("Failed to toggle Global Demo", e);
+            }
+        }
+
+        // Initialize status
+        fetchGlobalDemoStatus();
     </script>
 </body>
 

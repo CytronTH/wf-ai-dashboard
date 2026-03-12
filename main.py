@@ -35,31 +35,104 @@ try:
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(23, GPIO.OUT)
     GPIO.output(23, GPIO.LOW)
+    GPIO.setup(24, GPIO.OUT)  # Changed from IN to OUT for global NG trigger
+    GPIO.output(24, GPIO.LOW)
     gpio_available = True
 except ImportError:
-    print("RPi.GPIO module not found. Simulating GPIO 23.")
+    print("RPi.GPIO module not found. Simulating GPIO 23 and 24.")
     gpio_available = False
 
 gpio_pulse_task = None
 
+# Global state for Real-time GPIO monitoring
+gpio_states = {
+    23: {"state": 0, "last_changed": None},
+    24: {"state": 0, "last_changed": None}
+}
+
+global_demo_active = False
+global_demo_task = None
+global_demo_interval = 5.0
+global_demo_paused = False
+
 async def trigger_gpio_pulse(camera_id):
-    """Trigger a 1-second pulse on GPIO 23."""
+    """Trigger a 1-second pulse on GPIO 23 and 24."""
     try:
         if gpio_available:
             GPIO.output(23, GPIO.HIGH)
+            GPIO.output(24, GPIO.HIGH)
         else:
-            print(f"[GPIO SIMULATION] Cam {camera_id} triggered. GPIO 23 -> HIGH")
+            print(f"[GPIO SIMULATION] Cam {camera_id} triggered. GPIO 23 AND 24 -> HIGH")
             
         await asyncio.sleep(1.0)
         
         if gpio_available:
             GPIO.output(23, GPIO.LOW)
+            GPIO.output(24, GPIO.LOW)
         else:
-            print(f"[GPIO SIMULATION] Cam {camera_id} finished. GPIO 23 -> LOW")
+            print(f"[GPIO SIMULATION] Cam {camera_id} finished. GPIO 23 AND 24 -> LOW")
     except asyncio.CancelledError:
         pass
     except Exception as e:
         print(f"GPIO Error: {e}")
+
+async def broadcast_gpio_status(pin, state, last_changed):
+    """Broadcasts GPIO state change to all connected WebSocket clients."""
+    if not connected_clients:
+        return
+
+    message = {
+        "type": "gpio",
+        "pin": pin,
+        "state": state,
+        "last_changed": last_changed
+    }
+    msg_str = json.dumps(message)
+    for client in connected_clients.copy():
+        try:
+            await client.send_text(msg_str)
+        except Exception:
+            if client in connected_clients:
+                connected_clients.remove(client)
+
+async def monitor_gpio_status():
+    """Async loop to continuously monitor GPIO 23 & 24 for state changes."""
+    # Initialize timestamps
+    now_iso = datetime.now().isoformat()
+    gpio_states[23]["last_changed"] = now_iso
+    gpio_states[24]["last_changed"] = now_iso
+    
+    # Initialize actual states if available
+    if gpio_available:
+        gpio_states[23]["state"] = GPIO.input(23)
+        gpio_states[24]["state"] = GPIO.input(24)
+
+    while True:
+        try:
+            now_iso = datetime.now().isoformat()
+            
+            # Read GPIO 23 (Output state if simulated, input state if real GPIO output allows readback)
+            # In RPi.GPIO, reading an OUT pin returns its set state.
+            current_23 = GPIO.input(23) if gpio_available else gpio_states[23]["state"]
+            if current_23 != gpio_states[23]["state"]:
+                gpio_states[23]["state"] = current_23
+                gpio_states[23]["last_changed"] = now_iso
+                await broadcast_gpio_status(23, current_23, now_iso)
+
+            # Read GPIO 24
+            current_24 = GPIO.input(24) if gpio_available else gpio_states[24]["state"]
+            if current_24 != gpio_states[24]["state"]:
+                gpio_states[24]["state"] = current_24
+                gpio_states[24]["last_changed"] = now_iso
+                await broadcast_gpio_status(24, current_24, now_iso)
+                
+            await asyncio.sleep(0.05) # 50ms polling rate
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"GPIO Monitoring Error: {e}")
+            await asyncio.sleep(1)
 
 def load_ng_stats():
     with stats_lock:
@@ -138,6 +211,110 @@ async def demo_loop(cam_id):
                 
             # Wait before next simulated inference
             await asyncio.sleep(3)
+
+async def global_demo_loop():
+    global global_demo_active, global_demo_interval, global_demo_paused
+    demo_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_images")
+    
+    crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface']
+    
+    # 5 Planes corresponding primarily to these top-level cameras in config
+    plane_cameras = [0, 2, 4, 5, 6] 
+    plane_to_folder = {
+        0: "plane_1",
+        2: "plane_2",
+        4: "plane_3",
+        5: "plane_4",
+        6: "plane_5"
+    }
+    
+    while global_demo_active:
+        if global_demo_paused:
+            await asyncio.sleep(1)
+            continue
+            
+        # Select one random plane to be NG
+        ng_plane = random.choice(plane_cameras)
+        
+        has_ng_in_round = False
+        
+        for cam_id in plane_cameras:
+            if not global_demo_active:
+                break
+                
+            is_ng = (cam_id == ng_plane)
+            folder_name = plane_to_folder.get(cam_id, "plane_1")
+            cam_ok_dir = os.path.join(demo_base_dir, folder_name, "ok")
+            cam_ng_dir = os.path.join(demo_base_dir, folder_name, "ng")
+            
+            ok_images = glob.glob(os.path.join(cam_ok_dir, "*.jpg")) + glob.glob(os.path.join(cam_ok_dir, "*.png"))
+            ng_images = glob.glob(os.path.join(cam_ng_dir, "*.jpg")) + glob.glob(os.path.join(cam_ng_dir, "*.png"))
+            
+            img_path = None
+            if is_ng and ng_images:
+                img_path = random.choice(ng_images)
+            elif not is_ng and ok_images:
+                img_path = random.choice(ok_images)
+            else:
+                # Fallback to general ok/ng if specific ones don't exist
+                global_ok = glob.glob(os.path.join(demo_base_dir, "ok", "*.jpg")) + glob.glob(os.path.join(demo_base_dir, "ok", "*.png"))
+                global_ng = glob.glob(os.path.join(demo_base_dir, "ng", "*.jpg")) + glob.glob(os.path.join(demo_base_dir, "ng", "*.png"))
+                if is_ng and global_ng:
+                    img_path = random.choice(global_ng)
+                elif not is_ng and global_ok:
+                    img_path = random.choice(global_ok)
+            
+            if not img_path:
+                continue
+                
+            img = cv2.imread(img_path)
+            
+            if img is None:
+                continue
+                
+            # Broadcast pre_crop
+            await broadcast_result(cam_id, 'pre_crop', 0.0, 0.5, img, 0.0)
+            await asyncio.sleep(0.05)
+            
+            # Broadcast crops
+            for crop in crops:
+                if not global_demo_active:
+                    break
+                
+                threshold = 0.5
+                if config and 'models' in config and crop in config['models']:
+                    threshold = config['models'][crop].get('threshold', 0.5)
+                
+                if not is_ng:
+                    score = threshold * random.uniform(0.1, 0.8)
+                else:
+                    if random.random() > 0.5 or crop == 'crop_1':
+                        score = threshold * random.uniform(1.1, 1.5)
+                        has_ng_in_round = True
+                    else:
+                        score = threshold * random.uniform(0.1, 0.8)
+
+                h, w = img.shape[:2]
+                cw, ch = w//3 or 1, h//3 or 1
+                cx = random.randint(0, max(0, w - cw))
+                cy = random.randint(0, max(0, h - ch))
+                crop_img = img[cy:cy+ch, cx:cx+cw]
+                
+                await broadcast_result(cam_id, crop, score, threshold, crop_img, 0.015)
+                await asyncio.sleep(0.02)
+                
+        if has_ng_in_round:
+            # Tell the frontend to show the NG overlay freeze dialog
+            msg_str = json.dumps({"type": "global_demo_freeze"})
+            for client in connected_clients.copy():
+                try:
+                    await client.send_text(msg_str)
+                except Exception:
+                    pass
+            global_demo_paused = True
+                
+        # Wait configured interval before next synchronized simulation round
+        await asyncio.sleep(global_demo_interval)
 
 async def broadcast_result(camera_id, image_id, score, threshold, overlay, inference_time=0.0):
     """Broadcasts a processed frame and its score to all connected WebSocket clients."""
@@ -316,6 +493,10 @@ async def lifespan(app: FastAPI):
 
     # Start TCP Receivers as background tasks
     tcp_tasks = []
+    
+    # Start GPIO Monitoring Task
+    gpio_monitor_task = asyncio.create_task(monitor_gpio_status())
+    
     for cam_name, cam_cfg in config.get("tcp_receivers", {}).items():
         task = asyncio.create_task(
             start_tcp_server(cam_cfg["port"], cam_cfg["id"])
@@ -325,6 +506,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Clean up tasks on shutdown
+    gpio_monitor_task.cancel()
     for task in tcp_tasks:
         task.cancel()
 
@@ -412,6 +594,46 @@ async def stop_demo_mode(req: DemoRequest):
             demo_tasks[c_id].cancel()
     return {"status": "stopped", "camera_id": c_id}
 
+class GlobalDemoRequest(BaseModel):
+    interval: float = 5.0
+
+@app.post("/api/global-demo/start")
+async def start_global_demo_mode(req: GlobalDemoRequest):
+    global global_demo_active, global_demo_task, global_demo_interval, global_demo_paused
+    global_demo_interval = max(1.0, float(req.interval)) # Ensure minimum 1 second
+    global_demo_paused = False
+    
+    if not global_demo_active:
+        global_demo_active = True
+        if global_demo_task and not global_demo_task.done():
+            global_demo_task.cancel()
+        global_demo_task = asyncio.create_task(global_demo_loop())
+    return {"status": "started", "interval": global_demo_interval}
+
+@app.post("/api/global-demo/stop")
+async def stop_global_demo_mode():
+    global global_demo_active, global_demo_task, global_demo_paused
+    if global_demo_active:
+        global_demo_active = False
+        global_demo_paused = False
+        if global_demo_task and not global_demo_task.done():
+            global_demo_task.cancel()
+    return {"status": "stopped"}
+
+@app.post("/api/global-demo/resume")
+async def resume_global_demo_mode():
+    global global_demo_paused
+    global_demo_paused = False
+    return {"status": "resumed"}
+
+@app.get("/api/global-demo/status")
+async def get_global_demo_status():
+    global global_demo_active, global_demo_interval
+    return {
+        "active": global_demo_active,
+        "interval": global_demo_interval
+    }
+
 class NGCropData(BaseModel):
     crop_id: str
     score: float
@@ -490,12 +712,26 @@ async def reset_ng_report():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connected_clients.append(websocket)
+    
+    # Send initial GPIO state immediately upon connection
+    try:
+        init_msgs = [
+            {"type": "gpio", "pin": 23, "state": gpio_states[23]["state"], "last_changed": gpio_states[23]["last_changed"]},
+            {"type": "gpio", "pin": 24, "state": gpio_states[24]["state"], "last_changed": gpio_states[24]["last_changed"]}
+        ]
+        for msg in init_msgs:
+            if msg["last_changed"] is not None:
+                await websocket.send_text(json.dumps(msg))
+    except Exception as e:
+        print(f"Error sending init GPIO state: {e}")
+        
     try:
         while True:
             # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
-        connected_clients.remove(websocket)
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
 
 if __name__ == "__main__":
     host = config.get("server", {}).get("host", "0.0.0.0") if config else "0.0.0.0"
