@@ -1,45 +1,85 @@
 server:
-  host: "0.0.0.0"
+  host: 0.0.0.0
   port: 8000
-
 tcp_receivers:
   camera_0:
     port: 8080
     id: 0
+    expected_crops:
+    - crop_1
+    - crop_2
   camera_1:
     port: 8081
     id: 1
-
+    expected_crops:
+    - crop_3
+    - crop_4
+  camera_2:
+    port: 8082
+    id: 2
+    expected_crops:
+    - crop_5
+    - crop_6
+  camera_3:
+    port: 8083
+    id: 3
+    expected_crops:
+    - masked_surface
+  camera_4:
+    port: 8084
+    id: 4
+    expected_crops:
+    - crop_1
+    - crop_2
+  camera_5:
+    port: 8085
+    id: 5
+    expected_crops:
+    - crop_3
+    - crop_4
+  camera_6:
+    port: 8086
+    id: 6
+    expected_crops:
+    - crop_5
+    - crop_6
 models:
   masked_surface:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_surface_masked_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_surface_masked_grayscale_0.1L123.hef
     size: 320
     threshold: 0.4
+    use_for_global: true
   pre_crop:
-    hef: ""
+    hef: ''
     size: 320
     threshold: 0.5
   crop_1:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_1_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_1_grayscale_0.1L123.hef
     size: 320
-    threshold: 0.27387965 
+    threshold: 0.27387965
+    use_for_global: true
   crop_2:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_2_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_2_grayscale_0.1L123.hef
     size: 320
     threshold: 0.2717024
+    use_for_global: true
   crop_3:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_3_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_3_grayscale_0.1L123.hef
     size: 320
-    threshold: 0.26577765
+    threshold: 0.2583
+    use_for_global: true
   crop_4:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_4_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_4_grayscale_0.1L123.hef
     size: 320
-    threshold: 0.21927136
+    threshold: 0.2231
+    use_for_global: true
   crop_5:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_5_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_5_grayscale_0.1L123.hef
     size: 320
-    threshold: 0.28599495
+    threshold: 0.3047
+    use_for_global: true
   crop_6:
-    hef: "/home/pi/wf/models/r0.1L123/patchcore_bank_mask_6_grayscale_0.1L123.hef"
+    hef: /home/pi/WF-AOI/wf-ai-dashboard/models/r0.1L123/patchcore_bank_mask_6_grayscale_0.1L123.hef
     size: 320
     threshold: 0.22712386
+    use_for_global: true
