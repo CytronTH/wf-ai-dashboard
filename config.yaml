@@ -84,10 +84,23 @@ models:
     threshold: 0.22712386
     use_for_global: true
 gpio_triggers:
-  '6': true
-  '5': true
-  '0': true
-  '1': true
-  '2': true
-  '3': true
-  '4': true
+  '6': false
+  '5': false
+  '0': false
+  '1': false
+  '2': false
+  '3': false
+  '4': false
+
+mqtt:
+  broker: "localhost"
+  port: 1883
+  username: "wf"
+  password: "wf2026"
+  status_topic: "+/sys/status"
+  command_topic: "{target}/sys/command"
+
+  managed_devices:
+    - wf51
+    - wf52
+    - wf53

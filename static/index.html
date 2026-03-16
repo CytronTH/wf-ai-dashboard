@@ -78,7 +78,7 @@
 
     <!-- Header -->
     <header
-        class="glass rounded-2xl p-5 flex justify-between items-center shadow-2xl flex-none border-b border-gray-700/50">
+        class="glass rounded-2xl p-5 flex justify-between items-center shadow-2xl flex-none border-b border-gray-700/50 relative z-40">
         <div>
             <h1
                 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
@@ -95,9 +95,10 @@
                     <i class="fa-solid fa-globe text-lg"></i>
                 </button>
                 <div class="flex items-center gap-1">
-                    <input type="number" id="demo-interval-input" value="5" min="1" max="60" 
+                    <input type="number" id="demo-interval-input" value="5" min="1" max="180" 
                         title="Demo Interval (Seconds)"
-                        class="bg-black/50 border border-gray-600 rounded text-xs text-white w-10 text-center focus:outline-none focus:border-blue-500 h-5 font-mono">
+                        onchange="updateGlobalDemoInterval(this.value)"
+                        class="bg-black/50 border border-gray-600 rounded text-xs text-white w-12 text-center focus:outline-none focus:border-blue-500 h-5 font-mono">
                     <span class="text-[9px] text-gray-500 font-mono">SEC</span>
                 </div>
             </div>
@@ -108,15 +109,39 @@
                 <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
                 <span class="text-xs font-bold uppercase tracking-wider">Refresh</span>
             </button>
-            <div
-                class="text-center bg-black/40 px-4 py-2 rounded-xl border border-gray-700/50 flex flex-col justify-center shadow-inner">
-                <div class="text-gray-500 text-[10px] uppercase tracking-wider mb-1 font-bold">System Status</div>
-                <div id="connection-status"
-                    class="text-yellow-400 font-bold text-sm flex items-center justify-center gap-2">
-                    <div
-                        class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.8)]">
+            <div class="flex gap-2 relative">
+                <button id="btn-system-control" onclick="toggleSystemControlModal()" 
+                    class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
+                    <i class="fa-solid fa-server transition-transform duration-500"></i>
+                    <span class="text-xs font-bold uppercase tracking-wider">System Control</span>
+                </button>
+                
+                <!-- System Control Modal Menu -->
+                <div id="sys-control-modal" class="hidden absolute top-[110%] right-0 w-[400px] z-[100] glass rounded-2xl shadow-2xl border border-gray-700/80 overflow-hidden transform origin-top-right transition-all duration-300 opacity-0 scale-95" style="backdrop-filter: blur(24px);">
+                    <div class="bg-black/40 p-4 border-b border-gray-700/50 flex justify-between items-center">
+                        <div class="text-sm font-bold text-gray-200 tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-blue-400"></i> Managed Devices
+                        </div>
+                        <button onclick="toggleSystemControlModal()" class="text-gray-500 hover:text-white transition-colors">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
                     </div>
-                    Connecting...
+                    <div class="p-2 max-h-[400px] overflow-y-auto" id="sys-device-list">
+                        <!-- Instantiated dynamically -->
+                        <div class="text-center p-4 text-gray-500 text-xs tracking-wider">Loading devices...</div>
+                    </div>
+                </div>
+
+                <div
+                    class="text-center bg-black/40 px-4 py-2 rounded-xl border border-gray-700/50 flex flex-col justify-center shadow-inner">
+                    <div class="text-gray-500 text-[10px] uppercase tracking-wider mb-1 font-bold">System Hub</div>
+                    <div id="connection-status"
+                        class="text-yellow-400 font-bold text-sm flex items-center justify-center gap-2">
+                        <div
+                            class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_rgba(250,204,21,0.8)]">
+                        </div>
+                        Connecting...
+                    </div>
                 </div>
             </div>
             
@@ -372,14 +397,196 @@
                     updateGpioStatus(data);
                 } else if (data.type === 'global_demo_freeze') {
                     showNgFreezeOverlay();
+                } else if (data.type === 'sys_status') {
+                    updateDeviceStatus(data.data);
                 } else {
                     updateHubUI(data);
                 }
             };
         }
 
+        // --- Multi-Device System Control & Heartbeat Logic ---
+        let deviceTracker = {};
+        let deviceHeartbeatTimer = null;
+        let isModalOpen = false;
+
+        function toggleSystemControlModal() {
+            const modal = document.getElementById('sys-control-modal');
+            isModalOpen = !isModalOpen;
+            
+            if (isModalOpen) {
+                modal.classList.remove('hidden');
+                // trigger animation reflow
+                void modal.offsetWidth;
+                modal.classList.remove('opacity-0', 'scale-95');
+                modal.classList.add('opacity-100', 'scale-100');
+                fetchDevicesConfig();
+            } else {
+                modal.classList.remove('opacity-100', 'scale-100');
+                modal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        async function fetchDevicesConfig() {
+            try {
+                const res = await fetch('/api/sys/devices');
+                if (res.ok) {
+                    const data = await res.json();
+                    renderDevicesList(data.devices);
+                }
+            } catch (e) {
+                console.error("Failed to fetch devices", e);
+            }
+        }
+
+        function renderDevicesList(devices) {
+            const listEl = document.getElementById('sys-device-list');
+            if (!devices || devices.length === 0) {
+                listEl.innerHTML = '<div class="text-center p-4 text-gray-500 text-xs tracking-wider">No managed devices configured in config.yaml.</div>';
+                return;
+            }
+            
+            listEl.innerHTML = '';
+            
+            devices.forEach(dev => {
+                // Initial update to tracker
+                if (!deviceTracker[dev.hostname] || deviceTracker[dev.hostname].status === 'offline') {
+                    deviceTracker[dev.hostname] = {
+                        status: dev.status,
+                        lastSeen: dev.last_seen || Date.now() // default to now if undefined from backend
+                    };
+                }
+
+                // If no heartbeat over 15s seen from API init, set to offline
+                if (Date.now() - deviceTracker[dev.hostname].lastSeen > 15000) {
+                     deviceTracker[dev.hostname].status = 'offline';
+                }
+                
+                const tr = deviceTracker[dev.hostname];
+                
+                let dotClass = "w-2 h-2 rounded-full shadow-[0_0_8px_rgba(107,114,128,0.8)] bg-gray-500";
+                let textClass = "text-gray-500";
+                
+                if (tr.status === 'alive' || tr.status === 'online') {
+                    dotClass = "w-2 h-2 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.8)] bg-ok";
+                    textClass = "text-ok";
+                } else if (tr.status === 'offline') {
+                    dotClass = "w-2 h-2 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.8)] bg-ng";
+                    textClass = "text-ng";
+                } else if (tr.status === 'restarting') {
+                    dotClass = "w-2 h-2 rounded-full shadow-[0_0_10px_rgba(250,204,21,0.8)] bg-yellow-400 animate-pulse";
+                    textClass = "text-yellow-400";
+                }
+
+                listEl.innerHTML += `
+                    <div class="flex items-center justify-between p-3 border-b border-gray-700/30 hover:bg-white/5 transition-colors group" id="dev-row-${dev.hostname}">
+                        <div class="flex items-center gap-3">
+                            <div id="dev-dot-${dev.hostname}" class="${dotClass}"></div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-sm tracking-wide text-gray-200 uppercase">${dev.hostname}</span>
+                                <span id="dev-txt-${dev.hostname}" class="text-[10px] font-mono tracking-widest ${textClass} uppercase">${tr.status}</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <button onclick="sendSystemCommand('${dev.hostname}', 'restart')" class="bg-yellow-600/20 hover:bg-yellow-500/40 text-yellow-500 border border-yellow-500/30 rounded p-1.5 px-3 flex items-center justify-center transition-all title="Restart">
+                                <i class="fa-solid fa-rotate-right text-xs"></i>
+                            </button>
+                            <button onclick="sendSystemCommand('${dev.hostname}', 'shutdown')" class="bg-red-600/20 hover:bg-red-500/40 text-red-500 border border-red-500/30 rounded p-1.5 px-3 flex items-center justify-center transition-all title="Shutdown">
+                                <i class="fa-solid fa-power-off text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // start ticker loop if not started
+            if (!deviceHeartbeatTimer) {
+                deviceHeartbeatTimer = setInterval(applyTimeoutLogic, 5000);
+            }
+        }
+
+        function updateDeviceStatus(payload) {
+            const hostname = payload.hostname || 'unknown';
+            const statusStr = payload.system || 'offline'; 
+            
+            if (!deviceTracker[hostname]) {
+                deviceTracker[hostname] = {};
+            }
+            
+            deviceTracker[hostname].status = statusStr;
+            deviceTracker[hostname].lastSeen = Date.now();
+            
+            updateVisualRow(hostname);
+        }
+
+        function applyTimeoutLogic() {
+            const now = Date.now();
+            Object.keys(deviceTracker).forEach(hostname => {
+                if (now - deviceTracker[hostname].lastSeen > 15000 && deviceTracker[hostname].status !== 'offline') {
+                    deviceTracker[hostname].status = 'offline';
+                    updateVisualRow(hostname);
+                }
+            });
+        }
+        
+        function updateVisualRow(hostname) {
+            const tr = deviceTracker[hostname];
+            if (!tr) return;
+            
+            const dotEl = document.getElementById(`dev-dot-${hostname}`);
+            const textEl = document.getElementById(`dev-txt-${hostname}`);
+            
+            if (!dotEl || !textEl) return; // Row might not be rendered if modal is closed or hasn't loaded
+            
+            textEl.innerText = tr.status.toUpperCase();
+            
+            dotEl.className = "w-2 h-2 rounded-full";
+            textEl.className = "text-[10px] font-mono tracking-widest uppercase ";
+            
+            if (tr.status === 'alive' || tr.status === 'online') {
+                dotEl.classList.add('bg-ok', 'shadow-[0_0_10px_rgba(16,185,129,0.8)]');
+                textEl.classList.add('text-ok');
+            } else if (tr.status === 'offline') {
+                dotEl.classList.add('bg-ng', 'shadow-[0_0_10px_rgba(239,68,68,0.8)]');
+                textEl.classList.add('text-ng');
+            } else if (tr.status === 'restarting') {
+                dotEl.classList.add('bg-yellow-400', 'shadow-[0_0_10px_rgba(250,204,21,0.8)]', 'animate-pulse');
+                textEl.classList.add('text-yellow-400');
+            } else {
+                dotEl.classList.add('bg-gray-500', 'shadow-[0_0_8px_rgba(107,114,128,0.8)]');
+                textEl.classList.add('text-gray-500');
+            }
+        }
+
+        async function sendSystemCommand(target, action) {
+            const confirmMsg = action === 'restart' ? `Are you sure you want to RESTART ${target}?` : `Are you sure you want to SHUTDOWN ${target}?`;
+            if (!confirm(confirmMsg)) return;
+            
+            try {
+                const res = await fetch('/api/sys/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: target, action: action })
+                });
+                
+                if (res.ok) {
+                    if (deviceTracker[target]) {
+                        deviceTracker[target].status = action === 'restart' ? 'restarting' : 'offline';
+                        updateVisualRow(target);
+                    }
+                } else {
+                    alert(`Failed to send ${action} command to ${target}.`);
+                }
+            } catch (e) {
+                console.error("Command Error:", e);
+                alert("Network error sending command.");
+            }
+        }
+
         // --- Demo NG Freeze Logic ---
         function showNgFreezeOverlay() {
+            isGlobalDemoPaused = true;
             const overlay = document.getElementById('ng-freeze-overlay');
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
@@ -397,12 +604,20 @@
             try {
                 await fetch('/api/global-demo/resume', { method: 'POST' });
                 
+                isGlobalDemoPaused = false;
+                currentCountdown = baseDemoInterval;
+                updateCountdownDisplay();
+                
                 setTimeout(() => {
                     overlay.classList.add('hidden');
                     overlay.classList.remove('flex');
                 }, 500); // Wait for transition
             } catch (e) {
                 console.error("Failed to resume global demo", e);
+                isGlobalDemoPaused = false;
+                currentCountdown = baseDemoInterval;
+                updateCountdownDisplay();
+                
                 // Allow hiding even on error so user isn't stuck forever
                 setTimeout(() => {
                     overlay.classList.add('hidden');
@@ -704,6 +919,49 @@
 
         // --- Global Demo Mode Logic ---
         let isGlobalDemoActive = false;
+        let isGlobalDemoPaused = false;
+        let baseDemoInterval = 5.0;
+        let currentCountdown = 5.0;
+        let demoCountdownTimer = null;
+
+        function startDemoCountdown() {
+            stopDemoCountdown();
+            currentCountdown = baseDemoInterval;
+            updateCountdownDisplay();
+            
+            demoCountdownTimer = setInterval(() => {
+                if (!isGlobalDemoActive || isGlobalDemoPaused) return;
+                
+                // Only decrement if the input is not focused
+                const inputEl = document.getElementById('demo-interval-input');
+                if (document.activeElement !== inputEl) {
+                    if (currentCountdown > 0) {
+                        currentCountdown -= 1;
+                        if (currentCountdown < 0) currentCountdown = 0;
+                        updateCountdownDisplay();
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopDemoCountdown() {
+            if (demoCountdownTimer) {
+                clearInterval(demoCountdownTimer);
+                demoCountdownTimer = null;
+            }
+            // Restore base interval to input
+            const inputEl = document.getElementById('demo-interval-input');
+            if (inputEl && document.activeElement !== inputEl) {
+                inputEl.value = Math.ceil(baseDemoInterval);
+            }
+        }
+
+        function updateCountdownDisplay() {
+            const inputEl = document.getElementById('demo-interval-input');
+            if (inputEl && document.activeElement !== inputEl) {
+                inputEl.value = Math.ceil(currentCountdown);
+            }
+        }
         
         async function fetchGlobalDemoStatus() {
             try {
@@ -711,8 +969,18 @@
                 if (res.ok) {
                     const data = await res.json();
                     isGlobalDemoActive = data.active;
-                    document.getElementById('demo-interval-input').value = data.interval;
+                    baseDemoInterval = data.interval;
+                    isGlobalDemoPaused = data.paused || false;
+                    document.getElementById('demo-interval-input').value = baseDemoInterval;
                     updateGlobalDemoBtnUI();
+
+                    if (isGlobalDemoActive) {
+                        if (isGlobalDemoPaused) {
+                            showNgFreezeOverlay();
+                        } else {
+                            startDemoCountdown();
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Failed to fetch Global Demo status", e);
@@ -740,9 +1008,28 @@
             }
         }
 
+        async function updateGlobalDemoInterval(val) {
+            const interval = parseFloat(val) || 5.0;
+            baseDemoInterval = interval;
+            currentCountdown = interval;
+            updateCountdownDisplay();
+            
+            if (isGlobalDemoActive) {
+                try {
+                    await fetch('/api/global-demo/update-interval', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ interval: interval })
+                    });
+                } catch (e) {
+                    console.error("Failed to update interval", e);
+                }
+            }
+        }
+
         async function toggleGlobalDemo() {
             const inputVal = document.getElementById('demo-interval-input').value;
-            const interval = parseFloat(inputVal) || 5.0;
+            let interval = isGlobalDemoActive ? baseDemoInterval : (parseFloat(inputVal) || 5.0);
             
             try {
                 if (isGlobalDemoActive) {
@@ -750,9 +1037,12 @@
                     const res = await fetch('/api/global-demo/stop', { method: 'POST' });
                     if (res.ok) {
                         isGlobalDemoActive = false;
+                        isGlobalDemoPaused = false;
+                        stopDemoCountdown();
                     }
                 } else {
                     // Turn on
+                    baseDemoInterval = interval;
                     const res = await fetch('/api/global-demo/start', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -760,6 +1050,8 @@
                     });
                     if (res.ok) {
                         isGlobalDemoActive = true;
+                        isGlobalDemoPaused = false;
+                        startDemoCountdown();
                     }
                 }
                 updateGlobalDemoBtnUI();

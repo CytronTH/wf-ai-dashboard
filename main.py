@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from typing import Dict, Optional, List
 from datetime import datetime
 import threading
+import paho.mqtt.client as mqtt
 
 from inference_handler import InferenceHandler
 
@@ -28,6 +29,44 @@ NG_STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ng_sta
 stats_lock = threading.Lock()
 demo_active = {}
 demo_tasks = {}
+mqtt_client = None
+device_statuses = {}
+
+async def broadcast_sys_status(msg_str):
+    for client in connected_clients.copy():
+        try:
+            await client.send_text(msg_str)
+        except Exception:
+            if client in connected_clients:
+                connected_clients.remove(client)
+
+def on_mqtt_connect(client, userdata, flags, rc, *args):
+    print(f"Connected to MQTT broker with result code {rc}")
+    status_topic = config.get("mqtt", {}).get("status_topic", "+/sys/status")
+    client.subscribe(status_topic)
+
+def on_mqtt_message(client, userdata, msg):
+    try:
+        payload = json.loads(msg.payload.decode('utf-8'))
+        hostname = payload.get("hostname", "unknown")
+        status = payload.get("system", "offline")
+        
+        # Update internal tracker
+        device_statuses[hostname] = {
+            "status": status,
+            "last_seen": int(datetime.now().timestamp() * 1000)
+        }
+        
+        ws_msg = {
+            "type": "sys_status",
+            "data": payload
+        }
+        msg_str = json.dumps(ws_msg)
+        
+        if userdata and 'loop' in userdata:
+            asyncio.run_coroutine_threadsafe(broadcast_sys_status(msg_str), userdata['loop'])
+    except Exception as e:
+        print(f"Error processing MQTT message: {e}")
 
 try:
     import RPi.GPIO as GPIO
@@ -227,12 +266,28 @@ async def global_demo_loop():
         5: "plane_4",
         6: "plane_5"
     }
+    import time
+    processing_time = 2.5  # Initial estimate for a full round
     
     while global_demo_active:
         if global_demo_paused:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             continue
             
+        # Deduct expected processing time so the round finishes exactly when the interval hits 0
+        sleep_amount = global_demo_interval - processing_time
+        if sleep_amount > 0:
+            slept = 0.0
+            while slept < sleep_amount and global_demo_active and not global_demo_paused:
+                chunk = min(0.5, sleep_amount - slept)
+                await asyncio.sleep(chunk)
+                slept += chunk
+                
+        if not global_demo_active or global_demo_paused:
+            continue
+            
+        t_start = time.time()
+        
         # Select one random plane to be NG
         ng_plane = random.choice(plane_cameras)
         
@@ -303,6 +358,11 @@ async def global_demo_loop():
                 await broadcast_result(cam_id, crop, score, threshold, crop_img, 0.015)
                 await asyncio.sleep(0.02)
                 
+        t_end = time.time()
+        actual_pt = t_end - t_start
+        # Exponential moving average to smooth variations in processing time
+        processing_time = (0.5 * processing_time) + (0.5 * actual_pt)
+                
         if has_ng_in_round:
             # Tell the frontend to show the NG overlay freeze dialog
             msg_str = json.dumps({"type": "global_demo_freeze"})
@@ -312,9 +372,9 @@ async def global_demo_loop():
                 except Exception:
                     pass
             global_demo_paused = True
-                
-        # Wait configured interval before next synchronized simulation round
-        await asyncio.sleep(global_demo_interval)
+            
+        while global_demo_paused and global_demo_active:
+            await asyncio.sleep(0.5)
 
 async def broadcast_result(camera_id, image_id, score, threshold, overlay, inference_time=0.0):
     """Broadcasts a processed frame and its score to all connected WebSocket clients."""
@@ -503,8 +563,39 @@ async def lifespan(app: FastAPI):
         )
         tcp_tasks.append(task)
         
+    loop = asyncio.get_running_loop()
+    
+    mqtt_config = config.get("mqtt", {})
+    mqtt_host = mqtt_config.get("broker", "localhost")
+    mqtt_port = mqtt_config.get("port", 1883)
+    mqtt_user = mqtt_config.get("username", None)
+    mqtt_pass = mqtt_config.get("password", None)
+    
+    global mqtt_client
+    try:
+        mqtt_client = mqtt.Client(userdata={'loop': loop}, callback_api_version=mqtt.CallbackAPIVersion.VERSION1)
+    except AttributeError:
+        mqtt_client = mqtt.Client(userdata={'loop': loop})
+        
+    if mqtt_user and mqtt_pass:
+        mqtt_client.username_pw_set(mqtt_user, mqtt_pass)
+        
+    mqtt_client.on_connect = on_mqtt_connect
+    mqtt_client.on_message = on_mqtt_message
+    
+    try:
+        mqtt_client.connect(mqtt_host, mqtt_port, 60)
+        mqtt_client.loop_start()
+        print(f"Started MQTT client connecting to {mqtt_host}:{mqtt_port}")
+    except Exception as e:
+        print(f"Could not connect to MQTT Broker: {e}")
+        
     yield
     
+    if mqtt_client:
+        mqtt_client.loop_stop()
+        mqtt_client.disconnect()
+        
     # Clean up tasks on shutdown
     gpio_monitor_task.cancel()
     for task in tcp_tasks:
@@ -550,6 +641,47 @@ async def update_global_status_config(new_config: GlobalStatusConfig):
         yaml.safe_dump(config, f, sort_keys=False)
         
     return {"status": "success"}
+
+class SysCommand(BaseModel):
+    target: str
+    action: str
+
+@app.post("/api/sys/command")
+async def send_sys_command(cmd: SysCommand):
+    global mqtt_client
+    if not mqtt_client:
+        return {"status": "error", "message": "MQTT client not initialized"}
+        
+    if cmd.action not in ["restart", "shutdown"]:
+        return {"status": "error", "message": "Invalid action"}
+        
+    command_topic_template = config.get("mqtt", {}).get("command_topic", "{target}/sys/command")
+    topic = command_topic_template.replace("{target}", cmd.target)
+    payload = json.dumps({"system": cmd.action})
+    
+    try:
+        mqtt_client.publish(topic, payload, retain=False)
+        return {"status": "success", "action": cmd.action, "target": cmd.target}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/sys/devices")
+async def get_sys_devices():
+    # Fix: managed_devices is under mqtt block
+    managed = config.get("mqtt", {}).get("managed_devices", [])
+    if not managed: # Fallback to top-level if not under mqtt
+        managed = config.get("managed_devices", [])
+    
+    response = []
+    for device in managed:
+        status_info = device_statuses.get(device, {"status": "offline", "last_seen": 0})
+        response.append({
+            "hostname": device,
+            "status": status_info["status"],
+            "last_seen": status_info["last_seen"]
+        })
+        
+    return {"devices": response}
 
 class GpioConfigUpdate(BaseModel):
     settings: Dict[str, bool]
@@ -620,6 +752,15 @@ async def stop_global_demo_mode():
             global_demo_task.cancel()
     return {"status": "stopped"}
 
+class GlobalDemoUpdateIntervalRequest(BaseModel):
+    interval: float
+
+@app.post("/api/global-demo/update-interval")
+async def update_global_demo_interval(req: GlobalDemoUpdateIntervalRequest):
+    global global_demo_interval
+    global_demo_interval = max(1.0, float(req.interval))
+    return {"status": "updated", "interval": global_demo_interval}
+
 @app.post("/api/global-demo/resume")
 async def resume_global_demo_mode():
     global global_demo_paused
@@ -628,10 +769,11 @@ async def resume_global_demo_mode():
 
 @app.get("/api/global-demo/status")
 async def get_global_demo_status():
-    global global_demo_active, global_demo_interval
+    global global_demo_active, global_demo_interval, global_demo_paused
     return {
         "active": global_demo_active,
-        "interval": global_demo_interval
+        "interval": global_demo_interval,
+        "paused": global_demo_paused
     }
 
 class NGCropData(BaseModel):
