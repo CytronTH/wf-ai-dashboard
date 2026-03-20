@@ -103,4 +103,6 @@ mqtt:
   managed_devices:
     - wf51
     - wf52
-    - wf53
+    - wfzero1
+    - wfzero2
+    - wfzero3

@@ -56,8 +56,7 @@
     </style>
 </head>
 
-<body class="h-screen w-screen p-6 flex flex-col gap-6 bg-dark text-slate-100 overflow-hidden relative">
-
+<body class="h-screen w-screen p-4 flex flex-col gap-4 bg-dark text-slate-100 overflow-hidden relative">
     <!-- NG Freeze Overlay -->
     <div id="ng-freeze-overlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm shadow-[inset_0_0_150px_rgba(239,68,68,0.5)] flex-col items-center justify-center hidden" style="opacity: 0; transition: opacity 0.5s ease-in-out;">
         <div class="text-ng text-9xl font-black mb-8 animate-pulse drop-shadow-[0_0_50px_rgba(239,68,68,1)] uppercase tracking-widest text-center">
@@ -102,6 +101,13 @@
                     <span class="text-[9px] text-gray-500 font-mono">SEC</span>
                 </div>
             </div>
+
+            <!-- Resolution Toggle -->
+            <button id="btn-toggle-res" onclick="toggleResolutionDisplay()" 
+                class="bg-gray-800/50 hover:bg-gray-700/50 text-gray-500 border border-gray-700 rounded-xl px-4 py-1.5 flex items-center justify-center gap-2 transition-all shadow-inner group" title="Toggle Image Resolution">
+                <i class="fa-solid fa-compress text-sm transition-transform duration-300 group-hover:scale-110"></i>
+                <span class="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Res</span>
+            </button>
 
             <!-- Refresh Button -->
             <button onclick="window.location.reload();"
@@ -177,197 +183,229 @@
 
     <!-- Main Grid -->
     <main
-        class="flex-1 w-full max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-4">
+        class="flex-1 w-full max-w-[1600px] mx-auto grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 pb-2">
 
-        <!-- Plane 1 (Dual Camera) -->
-        <div class="plane-card glass rounded-2xl overflow-hidden flex flex-col group relative border-2 border-gray-700/50 bg-gray-800/30">
-            <div class="p-4 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
-                <h2 class="text-xl font-bold tracking-wider flex items-center gap-3">
-                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 1
+        <!-- Camera 0 -->
+        <a href="/camera?id=0" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 1A
                 </h2>
-                <div class="flex items-center gap-3">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
+                        <span id="time-plane0" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane0" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
+                    <button onclick="toggleGpio('0', this)" data-cameras="0" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
+                    </button>
+                    <span id="badge-0" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                </div>
+            </div>
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-0" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 1A view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
+                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
+            </div>
+        </a>
+
+        <!-- Camera 1 -->
+        <a href="/camera?id=1" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 1B
+                </h2>
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
                         <span id="time-plane1" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
-                        <span id="elapsed-plane1" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                        <span id="elapsed-plane1" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
                     </div>
-                    <button onclick="toggleGpio('0,1', this)" data-cameras="0,1" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button onclick="toggleGpio('1', this)" data-cameras="1" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
                     </button>
-                    <span id="badge-plane-1"
-                        class="status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                    <span id="badge-1" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
                 </div>
             </div>
-            <!-- Dual feeds wrapper -->
-            <div class="flex-1 grid grid-cols-2 gap-1 bg-black/80 p-1 min-h-[250px]">
-                
-                <!-- Cam A (ID 0) -->
-                <a href="/camera?id=0" class="relative bg-black flex items-center justify-center overflow-hidden rounded-l-xl cursor-pointer hover:opacity-90 transition-opacity">
-                    <img id="img-0" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 1 Cam A">
-                    <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
-                        <i class="fa-solid fa-camera opacity-50"></i>
-                        <span class="text-[10px] font-medium tracking-widest uppercase">Cam A</span>
-                    </div>
-                </a>
-
-                <!-- Cam B (ID 1) -->
-                <a href="/camera?id=1" class="relative bg-black flex items-center justify-center overflow-hidden rounded-r-xl cursor-pointer hover:opacity-90 transition-opacity">
-                    <img id="img-1" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 1 Cam B">
-                    <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
-                        <i class="fa-solid fa-camera opacity-50"></i>
-                        <span class="text-[10px] font-medium tracking-widest uppercase">Cam B</span>
-                    </div>
-                </a>
-
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-1" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 1B view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
+                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
-        </div>
+        </a>
 
-        <!-- Plane 2 (Dual Camera) -->
-        <div class="plane-card glass rounded-2xl overflow-hidden flex flex-col group relative border-2 border-gray-700/50 bg-gray-800/30">
-            <div class="p-4 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
-                <h2 class="text-xl font-bold tracking-wider flex items-center gap-3">
-                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 2
+        <!-- Camera 2 -->
+        <a href="/camera?id=2" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 2A
                 </h2>
-                <div class="flex items-center gap-3">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
                         <span id="time-plane2" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
-                        <span id="elapsed-plane2" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                        <span id="elapsed-plane2" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
                     </div>
-                    <button onclick="toggleGpio('2,3', this)" data-cameras="2,3" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button onclick="toggleGpio('2', this)" data-cameras="2" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
                     </button>
-                    <span id="badge-plane-2"
-                        class="status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                    <span id="badge-2" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
                 </div>
             </div>
-            <!-- Dual feeds wrapper -->
-            <div class="flex-1 grid grid-cols-2 gap-1 bg-black/80 p-1 min-h-[250px]">
-                
-                <!-- Cam C (ID 2) -->
-                <a href="/camera?id=2" class="relative bg-black flex items-center justify-center overflow-hidden rounded-l-xl cursor-pointer hover:opacity-90 transition-opacity">
-                    <img id="img-2" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 2 Cam A">
-                    <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
-                        <i class="fa-solid fa-camera opacity-50"></i>
-                        <span class="text-[10px] font-medium tracking-widest uppercase">Cam A</span>
-                    </div>
-                </a>
-
-                <!-- Cam D (ID 3) -->
-                <a href="/camera?id=3" class="relative bg-black flex items-center justify-center overflow-hidden rounded-r-xl cursor-pointer hover:opacity-90 transition-opacity">
-                    <img id="img-3" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 2 Cam B">
-                    <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
-                        <i class="fa-solid fa-camera opacity-50"></i>
-                        <span class="text-[10px] font-medium tracking-widest uppercase">Cam B</span>
-                    </div>
-                </a>
-
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-2" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 2A view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
+                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
-        </div>
+        </a>
 
-        <!-- Plane 3 (Active) -->
-        <a href="/camera?id=4"
-            class="plane-card glass rounded-2xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
-            <div class="p-4 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
-                <h2 class="text-xl font-bold tracking-wider flex items-center gap-3">
+        <!-- Camera 3 -->
+        <a href="/camera?id=3" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-blue-400"></i> Plane 2B
+                </h2>
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
+                        <span id="time-plane3" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane3" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                    </div>
+                    <button onclick="toggleGpio('3', this)" data-cameras="3" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
+                    </button>
+                    <span id="badge-3" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                </div>
+            </div>
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-3" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 2B view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
+                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
+            </div>
+        </a>
+
+        <!-- Camera 4 -->
+        <a href="/camera?id=4" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 3
                 </h2>
-                <div class="flex items-center gap-3">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
-                        <span id="time-plane3" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
-                        <span id="elapsed-plane3" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
+                        <span id="time-plane4" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane4" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
                     </div>
-                    <button onclick="toggleGpio('4', this)" data-cameras="4" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button onclick="toggleGpio('4', this)" data-cameras="4" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
                     </button>
-                    <span id="badge-4"
-                        class="status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                    <span id="badge-4" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
                 </div>
             </div>
-            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[250px]">
-                <img id="img-4" src=""
-                    class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
-                    alt="Plane 3 view">
-                <div class="placeholder flex flex-col items-center gap-3 text-gray-500 z-10">
-                    <i class="fa-solid fa-camera fa-2x opacity-50"></i>
-                    <span class="text-sm font-medium tracking-widest uppercase">Awaiting Feed</span>
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-4" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 3 view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
-                <!-- Overlay Gradient -->
-                <div
-                    class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0">
-                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
 
-        <!-- Plane 4 (Active) -->
-        <a href="/camera?id=5"
-            class="plane-card glass rounded-2xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
-            <div class="p-4 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
-                <h2 class="text-xl font-bold tracking-wider flex items-center gap-3">
+        <!-- Camera 5 -->
+        <a href="/camera?id=5" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 4
                 </h2>
-                <div class="flex items-center gap-3">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
-                        <span id="time-plane4" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
-                        <span id="elapsed-plane4" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
+                        <span id="time-plane5" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane5" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
                     </div>
-                    <button onclick="toggleGpio('5', this)" data-cameras="5" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button onclick="toggleGpio('5', this)" data-cameras="5" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
                     </button>
-                    <span id="badge-5"
-                        class="status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                    <span id="badge-5" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
                 </div>
             </div>
-            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[250px]">
-                <img id="img-5" src=""
-                    class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
-                    alt="Plane 4 view">
-                <div class="placeholder flex flex-col items-center gap-3 text-gray-500 z-10">
-                    <i class="fa-solid fa-camera fa-2x opacity-50"></i>
-                    <span class="text-sm font-medium tracking-widest uppercase">Awaiting Feed</span>
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-5" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 4 view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
-                <!-- Overlay Gradient -->
-                <div
-                    class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0">
-                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
 
-        <!-- Plane 5 (Active) -->
-        <a href="/camera?id=6"
-            class="plane-card glass rounded-2xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30 lg:col-start-2">
-            <div class="p-4 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
-                <h2 class="text-xl font-bold tracking-wider flex items-center gap-3">
+        <!-- Camera 6 -->
+        <a href="/camera?id=6" class="plane-card glass rounded-xl overflow-hidden flex flex-col group relative cursor-pointer border-2 border-gray-700/50 bg-gray-800/30">
+            <div class="p-3 flex justify-between items-center border-b border-gray-700/50 bg-black/20">
+                <h2 class="text-sm font-bold tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-microchip text-blue-400"></i> Plane 5
                 </h2>
-                <div class="flex items-center gap-3">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
-                        <span id="time-plane5" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
-                        <span id="elapsed-plane5" class="text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
+                <div class="flex items-center gap-2">
+                    <div class="hidden sm:flex flex-col items-end mr-1">
+                        <span id="time-plane6" class="text-[10px] font-mono text-gray-400 font-bold leading-tight">WAIT</span>
+                        <span id="elapsed-plane6" class="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-none mt-0.5">...</span>
                     </div>
-                    <button onclick="toggleGpio('6', this)" data-cameras="6" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
-                        <i class="fa-solid fa-bolt"></i>
+                    <button onclick="toggleGpio('6', this)" data-cameras="6" class="gpio-toggle bg-gray-700/50 hover:bg-gray-600/50 text-gray-500 rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-inner relative z-20" title="Toggle GPIO Trigger">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
                     </button>
-                    <span id="badge-6"
-                        class="status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
+                    <span id="badge-6" class="status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-gray-600 text-white shadow-md transition-colors duration-300">WAIT</span>
                 </div>
             </div>
-            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[250px]">
-                <img id="img-6" src=""
-                    class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
-                    alt="Plane 5 view">
-                <div class="placeholder flex flex-col items-center gap-3 text-gray-500 z-10">
-                    <i class="fa-solid fa-camera fa-2x opacity-50"></i>
-                    <span class="text-sm font-medium tracking-widest uppercase">Awaiting Feed</span>
+            <div class="flex-1 relative bg-black/60 flex items-center justify-center overflow-hidden min-h-[160px]">
+                <img id="img-6" src="" class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500" alt="Plane 5 view">
+                <div class="placeholder flex flex-col items-center gap-2 text-gray-500 z-10">
+                    <i class="fa-solid fa-camera text-xl opacity-50"></i>
+                    <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
-                <!-- Overlay Gradient -->
-                <div
-                    class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0">
-                </div>
+                <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
 
     </main>
 
     <script>
+        let showResolution = false;
+
+        function toggleResolutionDisplay() {
+            showResolution = !showResolution;
+            const btn = document.getElementById('btn-toggle-res');
+            if (showResolution) {
+                btn.classList.add('text-blue-400', 'bg-blue-600/20', 'border-blue-500/30');
+                btn.classList.remove('text-gray-500', 'bg-gray-800/50', 'border-gray-700');
+            } else {
+                btn.classList.remove('text-blue-400', 'bg-blue-600/20', 'border-blue-500/30');
+                btn.classList.add('text-gray-500', 'bg-gray-800/50', 'border-gray-700');
+            }
+            // Toggle visibility of all existing labels
+            document.querySelectorAll('.res-label').forEach(el => {
+                if (showResolution && el.innerText.trim() !== '') {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+
         let ws;
 
         function connectWS() {
@@ -703,20 +741,8 @@
         // We only care about tracking global NG vs OK for thumbnails
         const cardStatusTracker = {};
 
-        // Object to track sub-camera status for dual planes
-        const dualPlaneTracker = {
-            plane1: { cam0: 'OK', cam1: 'OK' },
-            plane2: { cam2: 'OK', cam3: 'OK' }
-        };
-
         // --- Plane Real-time Status Tracking ---
-        const planeTimeTracker = {
-            plane1: null,
-            plane2: null,
-            plane3: null,
-            plane4: null,
-            plane5: null
-        };
+        const planeTimeTracker = {};
 
         function updatePlaneTimeTickers() {
             const now = new Date();
@@ -757,24 +783,7 @@
             if (camIdInt < 0 || camIdInt > 6) return;
 
             const imgEl = document.getElementById(`img-${camera_id}`);
-            
-            // Determine the badge element (group by plane)
-            let badgeEl;
-            let groupPlaneId = null;
-            
-            if (camIdInt === 0 || camIdInt === 1) {
-                // Plane 1 (Dual Camera)
-                badgeEl = document.getElementById(`badge-plane-1`);
-                groupPlaneId = 'plane1';
-            } else if (camIdInt === 2 || camIdInt === 3) {
-                // Plane 2 (Dual Camera)
-                badgeEl = document.getElementById(`badge-plane-2`);
-                groupPlaneId = 'plane2';
-            } else if (camIdInt >= 4 && camIdInt <= 6) {
-                // Plane 3, 4, 5 (Single Camera per plane)
-                badgeEl = document.getElementById(`badge-${camera_id}`);
-            }
-
+            const badgeEl = document.getElementById(`badge-${camera_id}`);
             const cardEl = imgEl?.closest('.plane-card');
 
             if (!imgEl || !badgeEl || !cardEl) return;
@@ -784,55 +793,30 @@
                 let finalStatus = 'OK';
                 
                 // --- Plane Time Tracking Update ---
-                const targetPlane = groupPlaneId || `plane${parseInt(camera_id) - 1}`; 
-                if (planeTimeTracker.hasOwnProperty(targetPlane)) {
-                    const planeNow = new Date();
-                    planeTimeTracker[targetPlane] = planeNow;
-                    
-                    const timeEl = document.getElementById(`time-${targetPlane}`);
-                    if (timeEl) {
-                        const timeStr = `${String(planeNow.getHours()).padStart(2, '0')}:${String(planeNow.getMinutes()).padStart(2, '0')}:${String(planeNow.getSeconds()).padStart(2, '0')}`;
-                        timeEl.innerText = timeStr;
-                    }
-                    // For single camera planes, we need to handle the fact that they don't have a groupPlaneId defined at top of updateHubUI
-                } else if (camIdInt >= 4 && camIdInt <= 6) {
-                     const singlePlaneId = `plane${camIdInt - 1}`;
-                     const planeNow = new Date();
-                     planeTimeTracker[singlePlaneId] = planeNow;
-                     const timeEl = document.getElementById(`time-${singlePlaneId}`);
-                     if (timeEl) {
-                         const timeStr = `${String(planeNow.getHours()).padStart(2, '0')}:${String(planeNow.getMinutes()).padStart(2, '0')}:${String(planeNow.getSeconds()).padStart(2, '0')}`;
-                         timeEl.innerText = timeStr;
-                     }
+                const singlePlaneId = `plane${camera_id}`;
+                const planeNow = new Date();
+                planeTimeTracker[singlePlaneId] = planeNow;
+                const timeEl = document.getElementById(`time-${singlePlaneId}`);
+                if (timeEl) {
+                    const timeStr = `${String(planeNow.getHours()).padStart(2, '0')}:${String(planeNow.getMinutes()).padStart(2, '0')}:${String(planeNow.getSeconds()).padStart(2, '0')}`;
+                    timeEl.innerText = timeStr;
                 }
                 // --- End Plane Time Tracking Update ---
 
-                if (groupPlaneId) {
-                    // It's a dual camera plane
-                    // Update the sub-camera tracking first based on previous round's tracking
-                    let subStatus = cardStatusTracker[camera_id] === 'NG' ? 'NG' : 'OK';
-                    dualPlaneTracker[groupPlaneId][`cam${camera_id}`] = subStatus;
-                    
-                    // Final status for a dual plane is NG if ANY of its sub-cameras are NG
-                    if (Object.values(dualPlaneTracker[groupPlaneId]).includes('NG')) {
-                        finalStatus = 'NG';
-                    }
-                } else {
-                    // It's a single camera plane
-                    if (cardStatusTracker[camera_id] === 'NG') {
-                        finalStatus = 'NG';
-                    }
+                // It's a single camera plane now
+                if (cardStatusTracker[camera_id] === 'NG') {
+                    finalStatus = 'NG';
                 }
 
                 // Update Badge visually for the finished round
                 if (finalStatus === 'OK') {
                     badgeEl.innerText = 'OK';
-                    badgeEl.className = 'status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-ok/20 text-ok border border-ok/50 shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all';
+                    badgeEl.className = 'status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-ok/20 text-ok border border-ok/50 shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all';
                     cardEl.classList.remove('border-gray-700/50', 'border-ng');
                     cardEl.classList.add('border-ok');
                 } else if (finalStatus === 'NG') {
                     badgeEl.innerText = 'NG';
-                    badgeEl.className = 'status-badge px-3 py-1 rounded-full text-xs font-black tracking-widest bg-ng text-white shadow-[0_0_15px_rgba(239,68,68,0.6)] transition-all';
+                    badgeEl.className = 'status-badge px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-ng text-white shadow-[0_0_15px_rgba(239,68,68,0.6)] transition-all';
                     cardEl.classList.remove('border-gray-700/50', 'border-ok');
                     cardEl.classList.add('border-ng');
                 }
@@ -841,7 +825,17 @@
                 cardStatusTracker[camera_id] = 'OK';
 
                 // Update Thumbnail visually
+                imgEl.onload = function() {
+                    const labelEl = this.parentElement.querySelector('.res-label');
+                    if (labelEl) {
+                        labelEl.innerText = `${this.naturalWidth} x ${this.naturalHeight}`;
+                        if (showResolution) {
+                            labelEl.classList.remove('hidden');
+                        }
+                    }
+                };
                 imgEl.src = image;
+
                 if (imgEl.classList.contains('opacity-0')) {
                     imgEl.classList.remove('opacity-0');
                     const placeholder = imgEl.parentElement.querySelector('.placeholder');

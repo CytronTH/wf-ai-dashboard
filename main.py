@@ -23,6 +23,7 @@ from inference_handler import InferenceHandler
 
 # Global State
 connected_clients = []
+debug_clients = {}
 handler = None
 config = {}
 NG_STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ng_stats.json")
@@ -45,26 +46,57 @@ def on_mqtt_connect(client, userdata, flags, rc, *args):
     status_topic = config.get("mqtt", {}).get("status_topic", "+/sys/status")
     client.subscribe(status_topic)
 
+async def broadcast_mqtt_debug(msg_str, topic):
+    dead_clients = []
+    for ws, subs in list(debug_clients.items()):
+        for sub in subs:
+            if mqtt.topic_matches_sub(sub, topic):
+                try:
+                    await ws.send_text(msg_str)
+                except Exception:
+                    dead_clients.append(ws)
+                break
+    for client in dead_clients:
+        if client in debug_clients:
+            del debug_clients[client]
+
 def on_mqtt_message(client, userdata, msg):
     try:
-        payload = json.loads(msg.payload.decode('utf-8'))
-        hostname = payload.get("hostname", "unknown")
-        status = payload.get("system", "offline")
-        
-        # Update internal tracker
-        device_statuses[hostname] = {
-            "status": status,
-            "last_seen": int(datetime.now().timestamp() * 1000)
-        }
-        
-        ws_msg = {
-            "type": "sys_status",
-            "data": payload
-        }
-        msg_str = json.dumps(ws_msg)
-        
-        if userdata and 'loop' in userdata:
-            asyncio.run_coroutine_threadsafe(broadcast_sys_status(msg_str), userdata['loop'])
+        topic = msg.topic
+        try:
+            payload_str = msg.payload.decode('utf-8')
+        except UnicodeDecodeError:
+            payload_str = str(msg.payload)
+            
+        # --- Debug Broadcast ---
+        if debug_clients and userdata and 'loop' in userdata:
+            debug_msg = json.dumps({"topic": topic, "payload": payload_str})
+            asyncio.run_coroutine_threadsafe(broadcast_mqtt_debug(debug_msg, topic), userdata['loop'])
+
+        # --- System Status Tracker ---
+        status_topic = config.get("mqtt", {}).get("status_topic", "+/sys/status")
+        if mqtt.topic_matches_sub(status_topic, topic):
+            try:
+                payload = json.loads(payload_str)
+                hostname = payload.get("hostname", "unknown")
+                status = payload.get("system", "offline")
+                
+                # Update internal tracker
+                device_statuses[hostname] = {
+                    "status": status,
+                    "last_seen": int(datetime.now().timestamp() * 1000)
+                }
+                
+                ws_msg = {
+                    "type": "sys_status",
+                    "data": payload
+                }
+                msg_str = json.dumps(ws_msg)
+                
+                if userdata and 'loop' in userdata:
+                    asyncio.run_coroutine_threadsafe(broadcast_sys_status(msg_str), userdata['loop'])
+            except json.JSONDecodeError:
+                pass # Ignore non-JSON messages for system status
     except Exception as e:
         print(f"Error processing MQTT message: {e}")
 
@@ -257,11 +289,13 @@ async def global_demo_loop():
     
     crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface']
     
-    # 5 Planes corresponding primarily to these top-level cameras in config
-    plane_cameras = [0, 2, 4, 5, 6] 
+    # 7 Cameras in 5 Physical Planes
+    plane_cameras = [0, 1, 2, 3, 4, 5, 6] 
     plane_to_folder = {
         0: "plane_1",
+        1: "plane_1",
         2: "plane_2",
+        3: "plane_2",
         4: "plane_3",
         5: "plane_4",
         6: "plane_5"
@@ -617,6 +651,11 @@ async def get_camera_view(id: int = 0):
     with open(f"{static_dir}/camera.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/mqtt-debug")
+async def get_mqtt_debug_view():
+    with open(f"{static_dir}/mqtt_debug.html", "r") as f:
+        return HTMLResponse(content=f.read())
+
 class GlobalStatusConfig(BaseModel):
     settings: Dict[str, bool]
 
@@ -874,6 +913,34 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         if websocket in connected_clients:
             connected_clients.remove(websocket)
+
+@app.websocket("/ws/mqtt-debug")
+async def mqtt_debug_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    debug_clients[websocket] = set()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("action") == "subscribe":
+                    topic = msg.get("topic")
+                    if topic:
+                        debug_clients[websocket].add(topic)
+                        global mqtt_client
+                        if mqtt_client:
+                            mqtt_client.subscribe(topic)
+                        await websocket.send_text(json.dumps({"topic": "sys", "payload": f"Subscribed to {topic}"}))
+                elif msg.get("action") == "unsubscribe":
+                    topic = msg.get("topic")
+                    if topic and topic in debug_clients[websocket]:
+                        debug_clients[websocket].remove(topic)
+                        await websocket.send_text(json.dumps({"topic": "sys", "payload": f"Unsubscribed from {topic}"}))
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        if websocket in debug_clients:
+            del debug_clients[websocket]
 
 if __name__ == "__main__":
     host = config.get("server", {}).get("host", "0.0.0.0") if config else "0.0.0.0"
