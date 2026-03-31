@@ -26,19 +26,19 @@ tcp_receivers:
     expected_crops:
     - masked_surface
   camera_4:
-    port: 8084
+    port: 9084
     id: 4
     expected_crops:
     - crop_1
     - crop_2
   camera_5:
-    port: 8085
+    port: 9085
     id: 5
     expected_crops:
     - crop_3
     - crop_4
   camera_6:
-    port: 8086
+    port: 9086
     id: 6
     expected_crops:
     - crop_5

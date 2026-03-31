@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 import json
 import struct
 import base64
@@ -229,7 +230,7 @@ async def demo_loop(cam_id):
     demo_ok_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_images", "ok")
     demo_ng_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_images", "ng")
     
-    crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface']
+    crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface', 'pre_crop']
     
     while demo_active.get(cam_id, False):
         ok_images = glob.glob(os.path.join(demo_ok_dir, "*.jpg")) + glob.glob(os.path.join(demo_ok_dir, "*.png"))
@@ -250,8 +251,8 @@ async def demo_loop(cam_id):
             if img is None:
                 continue
                 
-            # Broadcast pre_crop
-            await broadcast_result(cam_id, 'pre_crop', 0.0, 0.5, img, 0.0)
+            # Broadcast raw_image
+            await broadcast_result(cam_id, 'raw_image', 0.0, 0.5, img, 0.0)
             await asyncio.sleep(0.1)
             
             # Broadcast crops
@@ -287,7 +288,7 @@ async def global_demo_loop():
     global global_demo_active, global_demo_interval, global_demo_paused
     demo_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_images")
     
-    crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface']
+    crops = ['crop_1', 'crop_2', 'crop_3', 'crop_4', 'crop_5', 'crop_6', 'masked_surface', 'pre_crop']
     
     # 7 Cameras in 5 Physical Planes
     plane_cameras = [0, 1, 2, 3, 4, 5, 6] 
@@ -361,8 +362,8 @@ async def global_demo_loop():
             if img is None:
                 continue
                 
-            # Broadcast pre_crop
-            await broadcast_result(cam_id, 'pre_crop', 0.0, 0.5, img, 0.0)
+            # Broadcast raw_image
+            await broadcast_result(cam_id, 'raw_image', 0.0, 0.5, img, 0.0)
             await asyncio.sleep(0.05)
             
             # Broadcast crops
@@ -487,8 +488,8 @@ async def handle_tcp_client(reader, writer, camera_id):
             
             print(f"[Cam {camera_id}] Received image_id: {image_id} (size: {image_size})")
 
-            # Track parts and summarize on pre_crop or raw_image
-            if image_id in ("pre_crop", "raw_image"):
+            # Track parts and summarize on raw_image
+            if image_id == "raw_image":
                 if len(received_parts) > 0 or round_count > 0:
                     round_count += 1
                     
@@ -496,10 +497,10 @@ async def handle_tcp_client(reader, writer, camera_id):
                     expected = set()
                     for cam_key, cam_val in config.get("tcp_receivers", {}).items():
                         if cam_val.get("id") == camera_id:
-                            expected = set(cam_val.get("expected_crops", config.get("models", {}).keys() - {"pre_crop", "raw_image"}))
+                            expected = set(cam_val.get("expected_crops", config.get("models", {}).keys() - {"raw_image"}))
                             break
                     if not expected:
-                        expected = set(config.get("models", {}).keys()) - {"pre_crop", "raw_image"}
+                        expected = set(config.get("models", {}).keys()) - {"raw_image"}
 
                     missing = expected - received_parts
                     
@@ -514,6 +515,21 @@ async def handle_tcp_client(reader, writer, camera_id):
                 received_parts.add(image_id)
 
             # 3. JPEG Image Data
+            if image_id == "error":
+                error_msg = metadata.get("message", "Unknown Proxy Error")
+                print(f"[Cam {camera_id}] Proxy Error: {error_msg}")
+                error_json = json.dumps({
+                    "type": "camera_error",
+                    "camera_id": camera_id,
+                    "message": error_msg
+                })
+                for client in connected_clients.copy():
+                    try:
+                        await client.send_text(error_json)
+                    except Exception:
+                        pass
+                continue
+                
             if image_size <= 0:
                 continue
                 
@@ -539,7 +555,7 @@ async def handle_tcp_client(reader, writer, camera_id):
             overlay = None
             inference_time = 0.0
 
-            if image_id in ("pre_crop", "raw_image"):
+            if image_id == "raw_image" or image_id == "processed_image" or image_id == "pre_crop":
                 # Bypass inference for base/raw images, simply send them directly
                 overlay = img
             else:
@@ -552,6 +568,8 @@ async def handle_tcp_client(reader, writer, camera_id):
                 inference_time = time.time() - start_time
                 
             if overlay is not None:
+                if image_id in ["processed_image", "raw_image", "pre_crop"]:
+                    print(f"\n[DEBUG] Broadcasting {image_id} for Cam {camera_id} via WebSocket. Size: {overlay.shape}")
                 # Broadcast the result
                 await broadcast_result(camera_id, image_id, score, threshold, overlay, inference_time)
 
@@ -656,7 +674,97 @@ async def get_mqtt_debug_view():
     with open(f"{static_dir}/mqtt_debug.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/calibrate")
+async def get_calibrate_view():
+    with open(f"{static_dir}/calibrate.html", "r") as f:
+        return HTMLResponse(content=f.read())
+
+class CalibrateSaveRequest(BaseModel):
+    camera_id: str
+    original_width: int
+    original_height: int
+    image_base64: str
+    regions: Dict
+
+@app.post("/api/calibrate/save")
+async def save_calibration(req: CalibrateSaveRequest):
+    try:
+        # Decode base64 image
+        if ',' in req.image_base64:
+            b64_data = req.image_base64.split(',')[1]
+        else:
+            b64_data = req.image_base64
+            
+        img_bytes = base64.b64decode(b64_data)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return {"status": "error", "message": "Failed to decode image"}
+            
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_dir = os.path.join(base_dir, "calibration_data")
+        os.makedirs(config_dir, exist_ok=True)
+        
+        cam_dir = os.path.join(config_dir, f"cam_{req.camera_id}")
+        os.makedirs(cam_dir, exist_ok=True)
+        
+        m1 = req.regions.get("m1")
+        m2 = req.regions.get("m2")
+        box_wall = req.regions.get("box_wall", [])
+        rois = req.regions.get("rois", [])
+        
+        # Crop and save templates
+        if m1:
+            crop_m1 = img[m1["y"]:m1["y"]+m1["h"], m1["x"]:m1["x"]+m1["w"]]
+            cv2.imwrite(os.path.join(cam_dir, "m1.jpg"), crop_m1)
+        if m2:
+            crop_m2 = img[m2["y"]:m2["y"]+m2["h"], m2["x"]:m2["x"]+m2["w"]]
+            cv2.imwrite(os.path.join(cam_dir, "m2.jpg"), crop_m2)
+            
+        # Save config JSON
+        config_data = {
+            "camera_id": req.camera_id,
+            "reference_size": {"width": req.original_width, "height": req.original_height},
+            "marks": {"m1": m1, "m2": m2},
+            "box_wall": box_wall,
+            "rois": rois
+        }
+        
+        with open(os.path.join(cam_dir, "pre_processing_config.json"), "w") as f:
+            json.dump(config_data, f, indent=4)
+            
+        return {"status": "success"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+class ResetCalibrationRequest(BaseModel):
+    camera_id: str
+
+@app.post("/api/calibrate/reset")
+async def reset_calibration(req: ResetCalibrationRequest):
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_dir = os.path.join(base_dir, "calibration_data")
+        cam_dir = os.path.join(config_dir, f"cam_{req.camera_id}")
+        config_path = os.path.join(cam_dir, "pre_processing_config.json")
+        if os.path.exists(config_path):
+            os.remove(config_path)
+            # Also clean up M1/M2 templates
+            for f in ["m1.jpg", "m2.jpg"]:
+                p = os.path.join(cam_dir, f)
+                if os.path.exists(p):
+                    os.remove(p)
+        return {"status": "success"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
 class GlobalStatusConfig(BaseModel):
+
     settings: Dict[str, bool]
 
 @app.get("/api/config/global-status")
@@ -941,6 +1049,15 @@ async def mqtt_debug_websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         if websocket in debug_clients:
             del debug_clients[websocket]
+
+@app.post("/api/exit-kiosk")
+async def exit_kiosk():
+    try:
+        subprocess.run(["killall", "chromium-browser"], check=False)
+        subprocess.run(["killall", "chromium"], check=False)
+        return {"status": "success", "message": "Kiosk mode exited"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     host = config.get("server", {}).get("host", "0.0.0.0") if config else "0.0.0.0"

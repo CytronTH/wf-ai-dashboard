@@ -109,17 +109,35 @@
                 <span class="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Res</span>
             </button>
 
+            <!-- Image ID Toggle -->
+            <button id="btn-toggle-id" onclick="toggleIdDisplay()" 
+                class="bg-gray-800/50 hover:bg-gray-700/50 text-gray-500 border border-gray-700 rounded-xl px-4 py-1.5 flex items-center justify-center gap-2 transition-all shadow-inner group" title="Toggle Image ID">
+                <i class="fa-solid fa-tag text-sm transition-transform duration-300 group-hover:scale-110"></i>
+                <span class="text-[10px] font-bold uppercase tracking-wider hidden sm:block">ID</span>
+            </button>
+
             <!-- Refresh Button -->
             <button onclick="window.location.reload();"
                 class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
                 <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
-                <span class="text-xs font-bold uppercase tracking-wider">Refresh</span>
+                <span class="text-xs font-bold uppercase tracking-wider hidden md:block">Refresh</span>
+            </button>
+            
+            <!-- Exit Kiosk Button -->
+            <button onclick="handleExitKiosk()" title="Exit Kiosk Mode"
+                class="bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
+                <i class="fa-solid fa-power-off group-hover:scale-110 transition-transform duration-300"></i>
+                <span class="text-xs font-bold uppercase tracking-wider hidden md:block">Exit</span>
             </button>
             <div class="flex gap-2 relative">
+                <a href="/calibrate" class="bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
+                    <i class="fa-solid fa-crop-simple transition-transform duration-500 group-hover:scale-110"></i>
+                    <span class="text-xs font-bold uppercase tracking-wider hidden md:block">Calibration</span>
+                </a>
                 <button id="btn-system-control" onclick="toggleSystemControlModal()" 
                     class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 transition-all shadow-inner group">
-                    <i class="fa-solid fa-server transition-transform duration-500"></i>
-                    <span class="text-xs font-bold uppercase tracking-wider">System Control</span>
+                    <i class="fa-solid fa-server transition-transform duration-500 group-hover:scale-110"></i>
+                    <span class="text-xs font-bold uppercase tracking-wider hidden md:block">System Control</span>
                 </button>
                 
                 <!-- System Control Modal Menu -->
@@ -209,6 +227,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -237,6 +256,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -265,6 +285,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -293,6 +314,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -321,6 +343,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -349,6 +372,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -377,6 +401,7 @@
                     <span class="text-xs font-medium tracking-widest uppercase">Awaiting Feed</span>
                 </div>
                 <div class="res-label hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono text-gray-300 z-20 backdrop-blur-sm shadow border border-gray-500/30"></div>
+                <div class="id-label hidden absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-blue-900/70 text-[9px] font-mono text-blue-200 z-20 backdrop-blur-sm shadow border border-blue-500/30"></div>
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80 z-0"></div>
             </div>
         </a>
@@ -385,6 +410,26 @@
 
     <script>
         let showResolution = false;
+        let showId = false;
+
+        function toggleIdDisplay() {
+            showId = !showId;
+            const btn = document.getElementById('btn-toggle-id');
+            if (showId) {
+                btn.classList.add('text-blue-400', 'bg-blue-600/20', 'border-blue-500/30');
+                btn.classList.remove('text-gray-500', 'bg-gray-800/50', 'border-gray-700');
+            } else {
+                btn.classList.remove('text-blue-400', 'bg-blue-600/20', 'border-blue-500/30');
+                btn.classList.add('text-gray-500', 'bg-gray-800/50', 'border-gray-700');
+            }
+            document.querySelectorAll('.id-label').forEach(el => {
+                if (showId && el.innerText.trim() !== '') {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
 
         function toggleResolutionDisplay() {
             showResolution = !showResolution;
@@ -431,7 +476,9 @@
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.type === 'gpio') {
+                if (data.type === 'camera_error') {
+                    showCameraErrorOverlay(data.camera_id, data.message);
+                } else if (data.type === 'gpio') {
                     updateGpioStatus(data);
                 } else if (data.type === 'global_demo_freeze') {
                     showNgFreezeOverlay();
@@ -622,6 +669,20 @@
             }
         }
 
+        async function handleExitKiosk() {
+            const userInput = prompt("Type 'exit' to confirm closing Kiosk mode:");
+            if (userInput !== null && userInput.trim().toLowerCase() === 'exit') {
+                try {
+                    const res = await fetch('/api/exit-kiosk', { method: 'POST' });
+                    if (!res.ok) {
+                        alert("Error closing Kiosk mode.");
+                    }
+                } catch (e) {
+                    console.error("Error calling exit API", e);
+                }
+            }
+        }
+
         // --- Demo NG Freeze Logic ---
         function showNgFreezeOverlay() {
             isGlobalDemoPaused = true;
@@ -773,7 +834,50 @@
         setInterval(() => {
             updatePlaneTimeTickers();
         }, 1000);
+
+        setInterval(() => {
+            const now = Date.now();
+            [0, 1, 2, 3, 4, 5, 6].forEach(cam_id => {
+                const trackerKey = `plane${cam_id}`;
+                const lastTime = planeTimeTracker[trackerKey] ? planeTimeTracker[trackerKey].getTime() : now; // ignore if never seen
+                
+                if (now - lastTime > 5000) {
+                    const imgEl = document.getElementById(`img-${cam_id}`);
+                    if (!imgEl) return;
+                    
+                    const container = imgEl.parentElement;
+                    let overlay = container.querySelector('.no-signal-overlay');
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'no-signal-overlay absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4 z-40 backdrop-blur-sm transition-opacity duration-300';
+                        overlay.innerHTML = `<div class="text-red-500 mb-2"><i class="fa-solid fa-triangle-exclamation text-4xl animate-pulse"></i></div><p class="text-white text-sm font-bold text-center tracking-widest">NO SIGNAL</p><p class="text-gray-400 text-xs mt-1 text-center font-mono">Camera or Proxy Offline</p>`;
+                        container.appendChild(overlay);
+                    }
+                    overlay.style.display = 'flex';
+                }
+            });
+        }, 1000);
+
+        function showCameraErrorOverlay(camera_id, message) {
+            const imgEl = document.getElementById(`img-${camera_id}`);
+            if (!imgEl) return;
+            const container = imgEl.parentElement;
+            let overlay = container.querySelector('.proxy-error-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'proxy-error-overlay absolute inset-0 bg-red-900/90 flex flex-col items-center justify-center p-4 z-50 transition-opacity duration-300';
+                container.appendChild(overlay);
+            }
+            overlay.innerHTML = `<div class="text-white mb-2"><i class="fa-solid fa-bug text-3xl"></i></div><p class="text-white text-xs font-bold text-center tracking-wide uppercase mb-1">Proxy Exception</p><pre class="text-red-200 text-[9px] w-full bg-black/50 p-2 rounded overflow-auto text-left max-h-32 whitespace-pre-wrap">${message}</pre>`;
+            overlay.style.display = 'flex';
+            
+            // Hide after 5 seconds
+            setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 5000);
+        }
+        
         // --- End Plane Tracking ---
+
+        const lastProcessedTime = {};
 
         function updateHubUI(data) {
             const { camera_id, image_id, status, image } = data;
@@ -788,7 +892,12 @@
 
             if (!imgEl || !badgeEl || !cardEl) return;
 
-            if (image_id === 'pre_crop' || image_id === 'raw_image') {
+            // Hide NO SIGNAL overlay if it exists because we just received a frame
+            const container = imgEl.parentElement;
+            const noSignalOverlay = container.querySelector('.no-signal-overlay');
+            if (noSignalOverlay) noSignalOverlay.style.display = 'none';
+
+            if (image_id === 'raw_image' || image_id === 'processed_image') {
                 // Determine final status
                 let finalStatus = 'OK';
                 
@@ -824,17 +933,34 @@
                 // Reset tracker for new round (only for the camera that got the pre_crop)
                 cardStatusTracker[camera_id] = 'OK';
 
-                // Update Thumbnail visually
-                imgEl.onload = function() {
-                    const labelEl = this.parentElement.querySelector('.res-label');
-                    if (labelEl) {
-                        labelEl.innerText = `${this.naturalWidth} x ${this.naturalHeight}`;
-                        if (showResolution) {
-                            labelEl.classList.remove('hidden');
+                if (image_id === 'processed_image') {
+                    lastProcessedTime[camera_id] = Date.now();
+                }
+
+                const shouldUpdateImage = !(image_id === 'raw_image' && camIdInt >= 4 && (Date.now() - (lastProcessedTime[camera_id] || 0) < 2000));
+
+                if (shouldUpdateImage) {
+                    // Update Image ID Label
+                    const idLabelEl = imgEl.parentElement.querySelector('.id-label');
+                    if (idLabelEl) {
+                        idLabelEl.innerText = image_id;
+                        if (showId) {
+                            idLabelEl.classList.remove('hidden');
                         }
                     }
-                };
-                imgEl.src = image;
+
+                    // Update Thumbnail visually
+                    imgEl.onload = function() {
+                        const labelEl = this.parentElement.querySelector('.res-label');
+                        if (labelEl) {
+                            labelEl.innerText = `${this.naturalWidth} x ${this.naturalHeight}`;
+                            if (showResolution) {
+                                labelEl.classList.remove('hidden');
+                            }
+                        }
+                    };
+                    imgEl.src = image;
+                }
 
                 if (imgEl.classList.contains('opacity-0')) {
                     imgEl.classList.remove('opacity-0');

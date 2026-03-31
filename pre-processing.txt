@@ -1,0 +1,32 @@
+Please implement an image pre-processing pipeline in Python using OpenCV for a camera feed. The pipeline should run in a background thread and sequentially apply the following operations, mimicking our existing "cam 1" configuration:
+
+**1. Multi-Mark Image Alignment (Registration & Warping):**
+- Load a calibration config JSON containing "calibration_marks" (reference x, y) and template images for each mark.
+- Convert the incoming frame to grayscale.
+- Find the primary mark (M1) using global template matching (`cv2.matchTemplate`).
+- Use M1's located position to calculate expected Regions of Interest (ROIs) for the remaining marks (M2, M3, etc.) based on their relative offsets from M1 in the calibration JSON. Search for these marks only within their respective ROIs to save CPU (e.g., padding ROI by ~200px).
+- Collect the found coordinates of the marks (input marks) and calculate a transformation matrix against canonical target coordinates (using `cv2.findHomography` with RANSAC if 4 marks, or `cv2.estimateAffinePartial2D` if 2 marks).
+- Warp the original frame to align it using `cv2.warpPerspective` or `cv2.warpAffine`.
+
+**2. Shadow Removal:**
+- Apply a "divisive" shadow removal algorithm on the aligned image (e.g., dividing the image by a Gaussian blurred version of itself with `sigma=50`).
+
+**3. Pre-Crop (Margin Cropping):**
+- Crop fixed pixel margins from the edges of the image based on configuration (e.g., crop `top=35`, `bottom=40`, `left=40`, `right=35` pixels).
+
+**4. Grayscale & Enhancement:**
+- Convert the cropped image to Grayscale.
+- Implement an optional toggle for CLAHE (Contrast Limited Adaptive Histogram Equalization) with `clipLimit=2.0` and `tileGridSize=(8,8)`.
+- Convert the resultant single-channel image back to a 3-channel image (GRAY2BGR) to maintain compatibility with downstream TCP transmission protocols.
+
+**5. ROI Box Cropping and Masking:**
+- Load a mask regions JSON configuration specifying bounding boxes (`x, y, width, height`) relative to a specific `reference_image_size`.
+- Calculate the offset/shift to map these bounding boxes to the current image dimensions.
+- Extract these specific regions as separate smaller crop images.
+- Draw solid black `cv2.rectangle` over these regions on the main image surface to mask them out.
+
+**6. Output Payload:**
+- The pipeline should yield a bundle of processed images ready for TCP sending:
+  a) The main masked surface (with the regions blacked out).
+  b) The pre-cropped full image (without black masks).
+  c) The individual region crops (e.g., `crop_1`, `crop_2`, etc.).

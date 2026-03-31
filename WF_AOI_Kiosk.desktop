@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Start AI Dashboard
+Comment=Launch Dashboard in Kiosk Mode
+Exec=/bin/bash /home/pi/start_dashboard_browser.sh
+Icon=web-browser
+Terminal=false
+Type=Application
+Categories=Utility;
